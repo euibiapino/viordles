@@ -81,13 +81,18 @@ async function executeListar(message, args, config) {
     return message.reply({ embeds: [embed] });
   }
 
-  const list = result.rows.map((m, i) => `**${i + 1}.** ${m.title} — *${m.suggested_by}*`).join('\n');
+  const PAGE_SIZE = 20;
+  const totalPages = Math.ceil(result.rows.length / PAGE_SIZE);
+  const page = Math.min(Math.max(parseInt(args[0]) || 1, 1), totalPages);
+  const slice = result.rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const list = slice.map((m, i) => `**${(page - 1) * PAGE_SIZE + i + 1}.** ${m.title} — *${m.suggested_by}*`).join('\n');
 
   const embed = new EmbedBuilder()
     .setTitle(`${config.emoji} ${config.labelPlural} Pendentes`)
     .setColor(0x5865F2)
     .setDescription(list)
-    .setFooter({ text: `${result.rows.length} na lista` })
+    .setFooter({ text: `Pagina ${page}/${totalPages} • ${result.rows.length} no total` })
     .setTimestamp();
 
   message.reply({ embeds: [embed] });

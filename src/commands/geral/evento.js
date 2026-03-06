@@ -30,8 +30,10 @@ module.exports = {
     const titulo = parts[1];
     const descricao = parts[2];
     const data = parts[3] || null;
-    const pingArg = parts[4] || null;
-    const imagemUrl = parts[5] || null;
+    const part4 = parts[4] || null;
+    const part5 = parts[5] || null;
+    const pingArg = part4?.startsWith('http') ? null : part4;
+    const imagemUrl = part4?.startsWith('http') ? part4 : part5;
 
     if (!TIPOS[tipo] || !titulo || !descricao) {
       const tiposLista = Object.keys(TIPOS).join(', ');

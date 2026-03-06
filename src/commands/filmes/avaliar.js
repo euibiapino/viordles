@@ -42,14 +42,15 @@ module.exports = {
       [movie.rows[0].id, message.author.id, message.author.username, rating]
     );
 
-    const stars = '⭐'.repeat(Math.round(rating / 2));
+    const filled = Math.round(rating / 2);
+    const stars = '★'.repeat(filled) + '☆'.repeat(5 - filled);
     const embed = new EmbedBuilder()
       .setTitle('⭐ Avaliacao Registrada!')
       .setColor(0xFEE75C)
       .addFields(
         { name: '🎬 Filme', value: movie.rows[0].title, inline: true },
-        { name: '🎯 Nota', value: `${rating}/10 ${stars}`, inline: true },
-        { name: '👤 Por', value: message.author.username, inline: true }
+        { name: '👤 Por', value: message.author.username, inline: true },
+        { name: '🎯 Nota', value: `**${rating}/10** ${stars}`, inline: false }
       )
       .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
       .setTimestamp();

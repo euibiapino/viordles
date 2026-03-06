@@ -6,7 +6,7 @@ const TIPOS = {
   stream:   { emoji: '📡', label: 'Stream / Evento ao Vivo', color: 0xED4245 },
   filme:    { emoji: '🎬', label: 'Watch Party — Filme',     color: 0x5865F2 },
   serie:    { emoji: '📺', label: 'Watch Party — Serie',     color: 0x9B59B6 },
-  jogo:     { emoji: '🎮', label: 'Game Night',              color: 0x57F287 },
+  jogo:     { emoji: '🎮', label: 'Game Time',               color: 0x57F287 },
   torneio:  { emoji: '🏆', label: 'Torneio',                 color: 0xFEE75C },
   sala:     { emoji: '🚪', label: 'Sala Personalizada',      color: 0x1ABC9C },
 };
@@ -72,15 +72,22 @@ module.exports = {
       pingContent = '@everyone';
     }
 
+    const tituloFormatado = titulo.replace(/\b\w/g, c => c.toUpperCase());
+
+    const fields = [
+      { name: '\u200b', value: '\u200b', inline: false },
+      { name: '📌 Tipo', value: cfg.label, inline: true },
+    ];
+    if (data) fields.push({ name: '🗓️ Quando', value: data, inline: true });
+
     const embed = new EmbedBuilder()
-      .setTitle(`${cfg.emoji} ${titulo}`)
+      .setTitle(`${cfg.emoji} ${tituloFormatado}`)
       .setColor(cfg.color)
-      .setDescription(descricao)
-      .addFields({ name: '📌 Tipo', value: cfg.label, inline: true })
+      .setDescription(`\n${descricao}\n`)
+      .addFields(fields)
       .setAuthor({ name: `Aviso por ${message.author.username}`, iconURL: message.author.displayAvatarURL() })
       .setTimestamp();
 
-    if (data) embed.addFields({ name: '🗓️ Quando', value: data, inline: true });
     if (imageUrl) embed.setImage(imageUrl);
 
     await message.delete().catch(() => {});

@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
 
 module.exports = {
@@ -29,14 +30,23 @@ module.exports = {
     }
 
     if (result.rows.length === 0) {
-      return message.reply('Nenhuma partida registrada ainda!');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Nenhuma partida registrada ainda!');
+      return message.reply({ embeds: [embed] });
     }
 
-    const title = gameName ? `Ranking de ${gameName}` : 'Ranking Geral';
+    const medals = ['🥇', '🥈', '🥉'];
     const list = result.rows
-      .map((r, i) => `**${i + 1}.** ${r.nome} - ${r.vitorias} vitoria${r.vitorias > 1 ? 's' : ''}`)
+      .map((r, i) => `${medals[i] || `**${i + 1}.**`} ${r.nome} — ${r.vitorias} vitoria${r.vitorias > 1 ? 's' : ''}`)
       .join('\n');
 
-    message.reply(`**${title}:**\n${list}`);
+    const title = gameName ? `Ranking de ${gameName}` : 'Ranking Geral de Jogos';
+    const embed = new EmbedBuilder()
+      .setTitle(title)
+      .setColor(0xFEE75C)
+      .setDescription(list);
+
+    message.reply({ embeds: [embed] });
   },
 };

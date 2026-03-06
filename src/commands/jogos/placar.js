@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
 
 module.exports = {
@@ -6,7 +7,10 @@ module.exports = {
   usage: '!placar <jogo> @vencedor @perdedor',
   async execute(message, args) {
     if (args.length < 2 || message.mentions.users.size < 2) {
-      return message.reply('Uso: `!placar <jogo> @vencedor @perdedor`');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Uso: `!placar <jogo> @vencedor @perdedor`');
+      return message.reply({ embeds: [embed] });
     }
 
     const mentions = [...message.mentions.users.values()];
@@ -15,7 +19,10 @@ module.exports = {
     const gameName = args.filter(a => !a.startsWith('<@')).join(' ').trim();
 
     if (!gameName) {
-      return message.reply('Informe o nome do jogo! Uso: `!placar <jogo> @vencedor @perdedor`');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Informe o nome do jogo! Uso: `!placar <jogo> @vencedor @perdedor`');
+      return message.reply({ embeds: [embed] });
     }
 
     const game = await pool.query(
@@ -28,6 +35,15 @@ module.exports = {
       [game.rows[0].id, winner.id, winner.username, loser.id, loser.username]
     );
 
-    message.reply(`Registrado: **${winner.username}** venceu **${loser.username}** em **${gameName}**!`);
+    const embed = new EmbedBuilder()
+      .setTitle('Partida Registrada!')
+      .setColor(0x57F287)
+      .addFields(
+        { name: 'Jogo', value: gameName, inline: true },
+        { name: 'Vencedor', value: winner.username, inline: true },
+        { name: 'Perdedor', value: loser.username, inline: true }
+      );
+
+    message.reply({ embeds: [embed] });
   },
 };

@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
 
 module.exports = {
@@ -7,7 +8,10 @@ module.exports = {
   async execute(message, args) {
     const title = args.join(' ').trim();
     if (!title) {
-      return message.reply('Uso: `!assistido <nome do filme>`');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Uso: `!assistido <nome do filme>`');
+      return message.reply({ embeds: [embed] });
     }
 
     const result = await pool.query(
@@ -16,9 +20,18 @@ module.exports = {
     );
 
     if (result.rows.length === 0) {
-      return message.reply('Filme nao encontrado na lista de pendentes.');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Filme nao encontrado na lista de pendentes.');
+      return message.reply({ embeds: [embed] });
     }
 
-    message.reply(`**${result.rows[0].title}** marcado como assistido! Use \`!avaliar ${result.rows[0].title} <nota>\` para avaliar.`);
+    const embed = new EmbedBuilder()
+      .setTitle('Filme Assistido!')
+      .setColor(0x57F287)
+      .setDescription(`**${result.rows[0].title}** marcado como assistido!`)
+      .setFooter({ text: `Use !avaliar ${result.rows[0].title} <nota> para avaliar` });
+
+    message.reply({ embeds: [embed] });
   },
 };

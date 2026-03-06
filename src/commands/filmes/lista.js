@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
 
 module.exports = {
@@ -10,13 +11,22 @@ module.exports = {
     );
 
     if (result.rows.length === 0) {
-      return message.reply('Nenhum filme na lista! Use `!sugerir` para adicionar.');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Nenhum filme na lista! Use `!sugerir <filme>` para adicionar.');
+      return message.reply({ embeds: [embed] });
     }
 
     const list = result.rows
-      .map((m, i) => `**${i + 1}.** ${m.title} _(sugerido por ${m.suggested_by})_`)
+      .map((m, i) => `**${i + 1}.** ${m.title} — *${m.suggested_by}*`)
       .join('\n');
 
-    message.reply(`**Filmes pendentes:**\n${list}`);
+    const embed = new EmbedBuilder()
+      .setTitle('Filmes Pendentes')
+      .setColor(0x5865F2)
+      .setDescription(list)
+      .setFooter({ text: `${result.rows.length} filme(s) na lista` });
+
+    message.reply({ embeds: [embed] });
   },
 };

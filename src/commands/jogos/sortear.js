@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
 
 module.exports = {
@@ -8,9 +9,17 @@ module.exports = {
     const result = await pool.query('SELECT name FROM games ORDER BY RANDOM() LIMIT 1');
 
     if (result.rows.length === 0) {
-      return message.reply('Nenhum jogo registrado ainda! Registre partidas com `!placar` para adicionar jogos.');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Nenhum jogo registrado ainda! Registre partidas com `!placar` para adicionar jogos.');
+      return message.reply({ embeds: [embed] });
     }
 
-    message.reply(`O jogo sorteado foi: **${result.rows[0].name}**!`);
+    const embed = new EmbedBuilder()
+      .setTitle('Jogo Sorteado!')
+      .setColor(0x57F287)
+      .setDescription(`**${result.rows[0].name}**`);
+
+    message.reply({ embeds: [embed] });
   },
 };

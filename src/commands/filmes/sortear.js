@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
 
 module.exports = {
@@ -10,10 +11,21 @@ module.exports = {
     );
 
     if (result.rows.length === 0) {
-      return message.reply('Nenhum filme na lista para sortear!');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Nenhum filme na lista para sortear!');
+      return message.reply({ embeds: [embed] });
     }
 
     const movie = result.rows[0];
-    message.reply(`O filme sorteado foi: **${movie.title}** _(sugerido por ${movie.suggested_by})_`);
+    const embed = new EmbedBuilder()
+      .setTitle('Filme Sorteado!')
+      .setColor(0x57F287)
+      .addFields(
+        { name: 'Filme', value: movie.title, inline: true },
+        { name: 'Sugerido por', value: movie.suggested_by, inline: true }
+      );
+
+    message.reply({ embeds: [embed] });
   },
 };

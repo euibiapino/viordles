@@ -1,3 +1,5 @@
+const { EmbedBuilder } = require('discord.js');
+
 module.exports = {
   name: 'times',
   description: 'Divide quem esta na call em times',
@@ -5,7 +7,10 @@ module.exports = {
   async execute(message, args) {
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) {
-      return message.reply('Voce precisa estar em um canal de voz!');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Voce precisa estar em um canal de voz!');
+      return message.reply({ embeds: [embed] });
     }
 
     const members = [...voiceChannel.members.values()]
@@ -13,25 +18,35 @@ module.exports = {
       .map(m => m.user.username);
 
     if (members.length < 2) {
-      return message.reply('Precisa de pelo menos 2 pessoas na call!');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Precisa de pelo menos 2 pessoas na call!');
+      return message.reply({ embeds: [embed] });
     }
 
     const numTeams = parseInt(args[0]) || 2;
     if (numTeams < 2 || numTeams > members.length) {
-      return message.reply(`Numero de times deve ser entre 2 e ${members.length}.`);
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription(`Numero de times deve ser entre 2 e ${members.length}.`);
+      return message.reply({ embeds: [embed] });
     }
 
     const shuffled = members.sort(() => Math.random() - 0.5);
     const teams = Array.from({ length: numTeams }, () => []);
+    shuffled.forEach((member, i) => teams[i % numTeams].push(member));
 
-    shuffled.forEach((member, i) => {
-      teams[i % numTeams].push(member);
-    });
+    const embed = new EmbedBuilder()
+      .setTitle('Times Sorteados!')
+      .setColor(0x5865F2)
+      .addFields(
+        teams.map((team, i) => ({
+          name: `Time ${i + 1}`,
+          value: team.join(', '),
+          inline: true,
+        }))
+      );
 
-    const result = teams
-      .map((team, i) => `**Time ${i + 1}:** ${team.join(', ')}`)
-      .join('\n');
-
-    message.reply(`**Times sorteados:**\n${result}`);
+    message.reply({ embeds: [embed] });
   },
 };

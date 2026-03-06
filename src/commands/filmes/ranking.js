@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
 
 module.exports = {
@@ -16,13 +17,22 @@ module.exports = {
     `);
 
     if (result.rows.length === 0) {
-      return message.reply('Nenhum filme avaliado ainda!');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Nenhum filme avaliado ainda!');
+      return message.reply({ embeds: [embed] });
     }
 
+    const medals = ['🥇', '🥈', '🥉'];
     const list = result.rows
-      .map((m, i) => `**${i + 1}.** ${m.title} - ${m.media}/10 _(${m.votos} voto${m.votos > 1 ? 's' : ''})_`)
+      .map((m, i) => `${medals[i] || `**${i + 1}.**`} ${m.title} — ${m.media}/10 *(${m.votos} voto${m.votos > 1 ? 's' : ''})*`)
       .join('\n');
 
-    message.reply(`**Ranking de Filmes:**\n${list}`);
+    const embed = new EmbedBuilder()
+      .setTitle('Ranking de Filmes')
+      .setColor(0xFEE75C)
+      .setDescription(list);
+
+    message.reply({ embeds: [embed] });
   },
 };

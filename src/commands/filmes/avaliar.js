@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
 
 module.exports = {
@@ -6,14 +7,20 @@ module.exports = {
   usage: '!avaliar <nome do filme> <nota>',
   async execute(message, args) {
     if (args.length < 2) {
-      return message.reply('Uso: `!avaliar <nome do filme> <nota>`');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Uso: `!avaliar <nome do filme> <nota>`');
+      return message.reply({ embeds: [embed] });
     }
 
     const rating = parseFloat(args[args.length - 1]);
     const title = args.slice(0, -1).join(' ').trim();
 
     if (isNaN(rating) || rating < 0 || rating > 10) {
-      return message.reply('A nota deve ser um numero entre 0 e 10.');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('A nota deve ser um numero entre 0 e 10.');
+      return message.reply({ embeds: [embed] });
     }
 
     const movie = await pool.query(
@@ -22,7 +29,10 @@ module.exports = {
     );
 
     if (movie.rows.length === 0) {
-      return message.reply('Filme nao encontrado nos assistidos. Marque como assistido primeiro com `!assistido`.');
+      const embed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setDescription('Filme nao encontrado nos assistidos. Marque como assistido primeiro com `!assistido`.');
+      return message.reply({ embeds: [embed] });
     }
 
     await pool.query(
@@ -32,6 +42,16 @@ module.exports = {
       [movie.rows[0].id, message.author.id, message.author.username, rating]
     );
 
-    message.reply(`Voce avaliou **${movie.rows[0].title}** com nota **${rating}**!`);
+    const stars = '⭐'.repeat(Math.round(rating / 2));
+    const embed = new EmbedBuilder()
+      .setTitle('Avaliacao Registrada!')
+      .setColor(0xFEE75C)
+      .addFields(
+        { name: 'Filme', value: movie.rows[0].title, inline: true },
+        { name: 'Nota', value: `${rating}/10 ${stars}`, inline: true },
+        { name: 'Por', value: message.author.username, inline: true }
+      );
+
+    message.reply({ embeds: [embed] });
   },
 };

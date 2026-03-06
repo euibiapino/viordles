@@ -6,6 +6,7 @@ const CATEGORIAS = {
   animes:    { emoji: '⛩️', label: 'Animes',    cmds: ['sugeriranime','animes','votaranime','sortearanime','assistidoanime','avaliaranime','rankinganime'] },
   animacoes: { emoji: '🎠', label: 'Animacoes', cmds: ['sugeriranim','animacoes','votaranim','sortearanim','assistidoanim','avaliaranim','rankinganim'] },
   jogos:     { emoji: '🎮', label: 'Jogos',     cmds: ['lfg','times','placar','rankingjogos','sortearjogo'] },
+  geral:     { emoji: '📣', label: 'Geral',     cmds: ['evento'] },
 };
 
 module.exports = {

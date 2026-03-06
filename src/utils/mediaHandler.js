@@ -100,7 +100,7 @@ async function executeListar(message, args, config) {
 
 async function executeVotar(message, args, config) {
   const result = await pool.query(
-    'SELECT title FROM movies WHERE watched = FALSE AND media_type = $1 ORDER BY created_at LIMIT 10',
+    'SELECT title FROM movies WHERE watched = FALSE AND media_type = $1 ORDER BY RANDOM() LIMIT 10',
     [config.type]
   );
 

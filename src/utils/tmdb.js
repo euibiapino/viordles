@@ -3,9 +3,11 @@ const axios = require('axios');
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
-async function searchMovie(title) {
+async function searchMedia(title, mediaType = 'movie') {
   try {
-    const response = await axios.get(`${BASE_URL}/search/movie`, {
+    const endpoint = mediaType === 'movie' ? '/search/movie' : '/search/tv';
+
+    const response = await axios.get(`${BASE_URL}${endpoint}`, {
       params: {
         api_key: process.env.TMDB_API_KEY,
         query: title,
@@ -13,18 +15,21 @@ async function searchMovie(title) {
       },
     });
 
-    const movie = response.data.results[0];
-    if (!movie) return null;
+    const result = response.data.results[0];
+    if (!result) return null;
+
+    const displayTitle = result.title || result.name;
+    const releaseDate = result.release_date || result.first_air_date;
 
     return {
-      title: movie.title,
-      poster: movie.poster_path ? `${IMAGE_BASE}${movie.poster_path}` : null,
-      overview: movie.overview,
-      year: movie.release_date ? movie.release_date.substring(0, 4) : null,
+      title: displayTitle,
+      poster: result.poster_path ? `${IMAGE_BASE}${result.poster_path}` : null,
+      overview: result.overview,
+      year: releaseDate ? releaseDate.substring(0, 4) : null,
     };
   } catch {
     return null;
   }
 }
 
-module.exports = { searchMovie };
+module.exports = { searchMedia };

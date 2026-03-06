@@ -7,6 +7,7 @@ async function createTables() {
       title TEXT NOT NULL,
       suggested_by TEXT NOT NULL,
       poster_url TEXT,
+      media_type TEXT NOT NULL DEFAULT 'filme',
       watched BOOLEAN DEFAULT FALSE,
       watched_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT NOW()
@@ -39,6 +40,7 @@ async function createTables() {
     );
 
     ALTER TABLE movies ADD COLUMN IF NOT EXISTS poster_url TEXT;
+    ALTER TABLE movies ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT 'filme';
   `);
 }
 

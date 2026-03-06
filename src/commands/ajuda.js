@@ -1,30 +1,46 @@
 const { EmbedBuilder } = require('discord.js');
 
+const CATEGORIAS = {
+  filmes:    { emoji: '🎬', label: 'Filmes',    cmds: ['sugerir','filmes','votar','sortearfilme','assistido','avaliar','rankingfilmes'] },
+  series:    { emoji: '📺', label: 'Series',    cmds: ['sugerirs','series','votars','sortears','assistidos','avaliars','rankings'] },
+  animes:    { emoji: '⛩️', label: 'Animes',    cmds: ['sugeriranime','animes','votaranime','sortearanime','assistidoanime','avaliaranime','rankinganime'] },
+  animacoes: { emoji: '🎠', label: 'Animacoes', cmds: ['sugeriranim','animacoes','votaranim','sortearanim','assistidoanim','avaliaranim','rankinganim'] },
+  jogos:     { emoji: '🎮', label: 'Jogos',     cmds: ['lfg','times','placar','rankingjogos','sortearjogo'] },
+};
+
 module.exports = {
   name: 'ajuda',
-  description: 'Mostra todos os comandos disponiveis',
-  usage: '!ajuda',
+  description: 'Mostra os comandos disponiveis',
+  usage: '!ajuda [categoria]',
   async execute(message, args, commands) {
-    const filmesNomes = ['filmes','sugerir','votar','sortearfilme','assistido','avaliar','rankingfilmes'];
-    const jogosNomes = ['lfg','times','placar','rankingjogos','sortearjogo'];
+    const cat = args[0]?.toLowerCase();
+    const catInfo = CATEGORIAS[cat];
 
-    const filmes = [...commands.values()].filter(c => filmesNomes.includes(c.name));
-    const jogos = [...commands.values()].filter(c => jogosNomes.includes(c.name));
+    if (catInfo) {
+      const lista = catInfo.cmds
+        .map(name => commands.get(name))
+        .filter(Boolean)
+        .map(c => `\`${c.usage}\`\n${c.description}`)
+        .join('\n\n');
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${catInfo.emoji} Comandos — ${catInfo.label}`)
+        .setColor(0x5865F2)
+        .setDescription(lista || 'Nenhum comando encontrado.')
+        .setFooter({ text: '!ajuda para ver categorias' });
+
+      return message.reply({ embeds: [embed] });
+    }
+
+    const cats = Object.entries(CATEGORIAS)
+      .map(([key, c]) => `${c.emoji} **${c.label}** — \`!ajuda ${key}\``)
+      .join('\n');
 
     const embed = new EmbedBuilder()
-      .setTitle('Comandos do Viordles')
+      .setTitle('Viordles — Categorias')
       .setColor(0x5865F2)
-      .addFields(
-        {
-          name: 'Filmes',
-          value: filmes.map(c => `\`${c.usage}\` — ${c.description}`).join('\n') || 'Nenhum',
-        },
-        {
-          name: 'Jogos',
-          value: jogos.map(c => `\`${c.usage}\` — ${c.description}`).join('\n') || 'Nenhum',
-        }
-      )
-      .setFooter({ text: 'Viordles Bot' });
+      .setDescription(cats)
+      .setFooter({ text: 'Use !ajuda <categoria> para ver os comandos' });
 
     message.reply({ embeds: [embed] });
   },

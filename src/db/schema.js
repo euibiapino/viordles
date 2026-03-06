@@ -6,6 +6,7 @@ async function createTables() {
       id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
       suggested_by TEXT NOT NULL,
+      poster_url TEXT,
       watched BOOLEAN DEFAULT FALSE,
       watched_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT NOW()
@@ -36,6 +37,8 @@ async function createTables() {
       loser_name TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     );
+
+    ALTER TABLE movies ADD COLUMN IF NOT EXISTS poster_url TEXT;
   `);
 }
 

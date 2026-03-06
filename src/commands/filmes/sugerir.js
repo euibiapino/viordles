@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const pool = require('../../db/pool');
+const { searchMovie } = require('../../utils/tmdb');
 
 module.exports = {
   name: 'sugerir',
@@ -26,18 +27,28 @@ module.exports = {
       return message.reply({ embeds: [embed] });
     }
 
+    const tmdb = await searchMovie(title);
+    const displayTitle = tmdb?.title || title;
+    const posterUrl = tmdb?.poster || null;
+
     await pool.query(
-      'INSERT INTO movies (title, suggested_by) VALUES ($1, $2)',
-      [title, message.author.username]
+      'INSERT INTO movies (title, suggested_by, poster_url) VALUES ($1, $2, $3)',
+      [displayTitle, message.author.username, posterUrl]
     );
 
     const embed = new EmbedBuilder()
-      .setTitle('Filme Adicionado!')
+      .setTitle('🎬 Filme Adicionado!')
       .setColor(0x57F287)
       .addFields(
-        { name: 'Filme', value: title, inline: true },
-        { name: 'Sugerido por', value: message.author.username, inline: true }
-      );
+        { name: 'Filme', value: displayTitle, inline: true },
+        { name: 'Sugerido por', value: message.author.username, inline: true },
+      )
+      .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+      .setTimestamp();
+
+    if (posterUrl) embed.setThumbnail(posterUrl);
+    if (tmdb?.overview) embed.setDescription(`*${tmdb.overview.substring(0, 150)}...*`);
+    if (tmdb?.year) embed.addFields({ name: 'Ano', value: tmdb.year, inline: true });
 
     message.reply({ embeds: [embed] });
   },

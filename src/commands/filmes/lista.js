@@ -22,10 +22,11 @@ module.exports = {
       .join('\n');
 
     const embed = new EmbedBuilder()
-      .setTitle('Filmes Pendentes')
+      .setTitle('🎬 Filmes Pendentes')
       .setColor(0x5865F2)
       .setDescription(list)
-      .setFooter({ text: `${result.rows.length} filme(s) na lista` });
+      .setFooter({ text: `${result.rows.length} filme(s) na lista` })
+      .setTimestamp();
 
     message.reply({ embeds: [embed] });
   },

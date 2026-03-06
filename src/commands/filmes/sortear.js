@@ -7,7 +7,7 @@ module.exports = {
   usage: '!sortearfilme',
   async execute(message) {
     const result = await pool.query(
-      'SELECT title, suggested_by FROM movies WHERE watched = FALSE ORDER BY RANDOM() LIMIT 1'
+      'SELECT title, suggested_by, poster_url FROM movies WHERE watched = FALSE ORDER BY RANDOM() LIMIT 1'
     );
 
     if (result.rows.length === 0) {
@@ -19,12 +19,15 @@ module.exports = {
 
     const movie = result.rows[0];
     const embed = new EmbedBuilder()
-      .setTitle('Filme Sorteado!')
+      .setTitle('🎲 Filme Sorteado!')
       .setColor(0x57F287)
       .addFields(
-        { name: 'Filme', value: movie.title, inline: true },
-        { name: 'Sugerido por', value: movie.suggested_by, inline: true }
-      );
+        { name: '🎬 Filme', value: movie.title, inline: true },
+        { name: '👤 Sugerido por', value: movie.suggested_by, inline: true }
+      )
+      .setTimestamp();
+
+    if (movie.poster_url) embed.setImage(movie.poster_url);
 
     message.reply({ embeds: [embed] });
   },

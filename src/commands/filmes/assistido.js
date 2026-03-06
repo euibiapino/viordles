@@ -15,7 +15,7 @@ module.exports = {
     }
 
     const result = await pool.query(
-      'UPDATE movies SET watched = TRUE, watched_at = NOW() WHERE LOWER(title) = LOWER($1) AND watched = FALSE RETURNING title',
+      'UPDATE movies SET watched = TRUE, watched_at = NOW() WHERE LOWER(title) = LOWER($1) AND watched = FALSE RETURNING title, poster_url',
       [title]
     );
 
@@ -26,11 +26,15 @@ module.exports = {
       return message.reply({ embeds: [embed] });
     }
 
+    const movie = result.rows[0];
     const embed = new EmbedBuilder()
-      .setTitle('Filme Assistido!')
+      .setTitle('✅ Filme Assistido!')
       .setColor(0x57F287)
-      .setDescription(`**${result.rows[0].title}** marcado como assistido!`)
-      .setFooter({ text: `Use !avaliar ${result.rows[0].title} <nota> para avaliar` });
+      .setDescription(`**${movie.title}** marcado como assistido!`)
+      .setFooter({ text: `Use !avaliar ${movie.title} <nota> para avaliar` })
+      .setTimestamp();
+
+    if (movie.poster_url) embed.setThumbnail(movie.poster_url);
 
     message.reply({ embeds: [embed] });
   },

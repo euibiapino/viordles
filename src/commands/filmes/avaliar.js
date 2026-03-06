@@ -24,7 +24,7 @@ module.exports = {
     }
 
     const movie = await pool.query(
-      'SELECT id, title FROM movies WHERE LOWER(title) = LOWER($1) AND watched = TRUE',
+      'SELECT id, title, poster_url FROM movies WHERE LOWER(title) = LOWER($1) AND watched = TRUE',
       [title]
     );
 
@@ -44,13 +44,17 @@ module.exports = {
 
     const stars = '⭐'.repeat(Math.round(rating / 2));
     const embed = new EmbedBuilder()
-      .setTitle('Avaliacao Registrada!')
+      .setTitle('⭐ Avaliacao Registrada!')
       .setColor(0xFEE75C)
       .addFields(
-        { name: 'Filme', value: movie.rows[0].title, inline: true },
-        { name: 'Nota', value: `${rating}/10 ${stars}`, inline: true },
-        { name: 'Por', value: message.author.username, inline: true }
-      );
+        { name: '🎬 Filme', value: movie.rows[0].title, inline: true },
+        { name: '🎯 Nota', value: `${rating}/10 ${stars}`, inline: true },
+        { name: '👤 Por', value: message.author.username, inline: true }
+      )
+      .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+      .setTimestamp();
+
+    if (movie.rows[0].poster_url) embed.setThumbnail(movie.rows[0].poster_url);
 
     message.reply({ embeds: [embed] });
   },

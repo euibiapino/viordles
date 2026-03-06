@@ -18,7 +18,7 @@ async function createTables() {
       movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
       user_id TEXT NOT NULL,
       username TEXT NOT NULL,
-      rating NUMERIC(2,1) NOT NULL CHECK (rating >= 0 AND rating <= 10),
+      rating NUMERIC(4,1) NOT NULL CHECK (rating >= 0 AND rating <= 10),
       created_at TIMESTAMP DEFAULT NOW(),
       UNIQUE(movie_id, user_id)
     );
@@ -41,6 +41,7 @@ async function createTables() {
 
     ALTER TABLE movies ADD COLUMN IF NOT EXISTS poster_url TEXT;
     ALTER TABLE movies ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT 'filme';
+    ALTER TABLE movie_ratings ALTER COLUMN rating TYPE NUMERIC(4,1);
   `);
 }
 

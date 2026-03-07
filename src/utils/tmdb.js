@@ -23,6 +23,7 @@ async function searchMedia(title, mediaType = 'movie') {
 
     return {
       title: displayTitle,
+      originalTitle: result.original_title || result.original_name || null,
       poster: result.poster_path ? `${IMAGE_BASE}${result.poster_path}` : null,
       overview: result.overview,
       year: releaseDate ? releaseDate.substring(0, 4) : null,

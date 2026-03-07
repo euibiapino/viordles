@@ -41,6 +41,7 @@ async function createTables() {
 
     ALTER TABLE movies ADD COLUMN IF NOT EXISTS poster_url TEXT;
     ALTER TABLE movies ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT 'filme';
+    ALTER TABLE movies ADD COLUMN IF NOT EXISTS original_title TEXT;
     ALTER TABLE movie_ratings ALTER COLUMN rating TYPE NUMERIC(4,1);
   `);
 }

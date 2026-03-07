@@ -10,7 +10,6 @@ const TIPOS = {
   torneio:  { emoji: '🏆', label: 'Torneio',                 color: 0xFEE75C },
   sala:     { emoji: '🚪', label: 'Sala Personalizada',      color: 0x1ABC9C },
 };
-
 module.exports = {
   name: 'evento',
   description: 'Cria um aviso de evento (apenas admins)',

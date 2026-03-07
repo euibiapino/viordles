@@ -6,13 +6,13 @@ const NUMBER_EMOJIS = ['1\u20E3','2\u20E3','3\u20E3','4\u20E3','5\u20E3','6\u20E
 
 async function findInList(query, mediaType) {
   const exact = await pool.query(
-    'SELECT * FROM movies WHERE LOWER(title) = LOWER($1) AND media_type = $2 LIMIT 1',
+    'SELECT * FROM movies WHERE (LOWER(title) = LOWER($1) OR LOWER(original_title) = LOWER($1)) AND media_type = $2 LIMIT 1',
     [query, mediaType]
   );
   if (exact.rows.length > 0) return { match: exact.rows[0], multiple: false };
 
   const partial = await pool.query(
-    "SELECT * FROM movies WHERE LOWER(title) LIKE '%' || LOWER($1) || '%' AND media_type = $2 ORDER BY created_at LIMIT 5",
+    "SELECT * FROM movies WHERE (LOWER(title) LIKE '%' || LOWER($1) || '%' OR LOWER(original_title) LIKE '%' || LOWER($1) || '%') AND media_type = $2 ORDER BY created_at LIMIT 5",
     [query, mediaType]
   );
   if (partial.rows.length === 0) return { match: null, multiple: false };
@@ -46,11 +46,12 @@ async function executeSugerir(message, args, config) {
 
   const tmdb = await searchMedia(title, config.tmdbType);
   const displayTitle = tmdb?.title || title;
+  const originalTitle = tmdb?.originalTitle || null;
   const posterUrl = tmdb?.poster || null;
 
   await pool.query(
-    'INSERT INTO movies (title, suggested_by, poster_url, media_type) VALUES ($1, $2, $3, $4)',
-    [displayTitle, message.author.username, posterUrl, config.type]
+    'INSERT INTO movies (title, original_title, suggested_by, poster_url, media_type) VALUES ($1, $2, $3, $4, $5)',
+    [displayTitle, originalTitle, message.author.username, posterUrl, config.type]
   );
 
   const embed = new EmbedBuilder()

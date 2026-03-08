@@ -7,7 +7,8 @@ async function searchGame(title) {
     });
     const result = response.data.results[0];
     return result?.background_image || null;
-  } catch {
+  } catch (err) {
+    console.error('[RAWG] Erro ao buscar "%s":', title, err.message);
     return null;
   }
 }

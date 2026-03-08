@@ -7,7 +7,7 @@ module.exports = {
     .setName('jogo')
     .setDescription('Comandos de jogos')
     .addSubcommand(sub => sub
-      .setName('lfg')
+      .setName('lg')
       .setDescription('Chama pra jogar um jogo especifico')
       .addStringOption(opt => opt.setName('nome').setDescription('Nome do jogo').setRequired(true))
       .addStringOption(opt => opt.setName('mensagem').setDescription('Mensagem adicional'))
@@ -26,9 +26,6 @@ module.exports = {
       .setName('ranking')
       .setDescription('Ranking de vitorias nos jogos'))
     .addSubcommand(sub => sub
-      .setName('sortear')
-      .setDescription('Sorteia um jogo da lista de jogos registrados'))
-    .addSubcommand(sub => sub
       .setName('sorteio')
       .setDescription('Sorteia um participante entre os mencionados')
       .addUserOption(opt => opt.setName('user1').setDescription('Participante 1').setRequired(true))
@@ -43,16 +40,15 @@ module.exports = {
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
 
-    if (sub === 'lfg') return executeLfg(interaction);
+    if (sub === 'lg') return executeLg(interaction);
     if (sub === 'times') return executeTimes(interaction);
     if (sub === 'placar') return executePlacar(interaction);
     if (sub === 'ranking') return executeRanking(interaction);
-    if (sub === 'sortear') return executeSortear(interaction);
     if (sub === 'sorteio') return executeSorteio(interaction);
   },
 };
 
-async function executeLfg(interaction) {
+async function executeLg(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
   const game = interaction.options.getString('nome');
@@ -63,11 +59,11 @@ async function executeLfg(interaction) {
   const imageUrl = await searchGame(game);
 
   const descricao = extra
-    ? `${interaction.user} quer jogar **${game}**!\n\n${extra}`
-    : `${interaction.user} quer jogar **${game}**! Quem ta dentro?`;
+    ? `${interaction.user} quer jogar **${game}**.\n\n${extra}`
+    : `${interaction.user} quer jogar **${game}**. Quem ta dentro?`;
 
   const embed = new EmbedBuilder()
-    .setTitle('Looking for Group!')
+    .setTitle('Procurando por Grupo!')
     .setColor(0x57F287)
     .setDescription(descricao)
     .setFooter({ text: 'Reaja com ✅ para entrar' });
@@ -76,7 +72,7 @@ async function executeLfg(interaction) {
 
   const msg = await interaction.channel.send({ content: ping, embeds: [embed] });
   await msg.react('✅');
-  await interaction.editReply({ content: 'LFG criado!' });
+  await interaction.deleteReply();
 }
 
 async function executeTimes(interaction) {
@@ -103,7 +99,11 @@ async function executeTimes(interaction) {
     return interaction.editReply({ embeds: [embed] });
   }
 
-  const shuffled = members.sort(() => Math.random() - 0.5);
+  const shuffled = [...members];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   const teams = Array.from({ length: numTeams }, () => []);
   shuffled.forEach((member, i) => teams[i % numTeams].push(member));
 
@@ -175,24 +175,6 @@ async function executeRanking(interaction) {
     .setTitle('Ranking Geral de Jogos')
     .setColor(0xFEE75C)
     .setDescription(list);
-
-  interaction.editReply({ embeds: [embed] });
-}
-
-async function executeSortear(interaction) {
-  await interaction.deferReply();
-
-  const result = await pool.query('SELECT name FROM games ORDER BY RANDOM() LIMIT 1');
-
-  if (result.rows.length === 0) {
-    const embed = new EmbedBuilder().setColor(0xED4245).setDescription('Nenhum jogo registrado ainda! Registre partidas com `/jogo placar` para adicionar jogos.');
-    return interaction.editReply({ embeds: [embed] });
-  }
-
-  const embed = new EmbedBuilder()
-    .setTitle('Jogo Sorteado!')
-    .setColor(0x57F287)
-    .setDescription(`**${result.rows[0].name}**`);
 
   interaction.editReply({ embeds: [embed] });
 }

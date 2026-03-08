@@ -1,10 +1,10 @@
-require('dotenv').config();
+require('dotenv').config({ path: process.env.ENV_FILE || '.env' });
 
 const http = require('http');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const fs = require('fs');
 const path = require('path');
 const { createTables } = require('./db/schema');
+const { loadCommands } = require('./utils/loadCommands');
 
 const client = new Client({
   intents: [
@@ -15,23 +15,7 @@ const client = new Client({
 });
 
 const commands = new Collection();
-
-function loadCommands(dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      loadCommands(fullPath);
-    } else if (entry.name.endsWith('.js')) {
-      const command = require(fullPath);
-      if (command.data && command.execute) {
-        commands.set(command.data.name, command);
-      }
-    }
-  }
-}
-
-loadCommands(path.join(__dirname, 'commands'));
+loadCommands(path.join(__dirname, 'commands')).forEach(cmd => commands.set(cmd.data.name, cmd));
 
 client.once('ready', async () => {
   console.log(`Bot online como ${client.user.tag}`);

@@ -30,7 +30,14 @@ module.exports = {
     .addStringOption(opt => opt.setName('titulo').setDescription('Titulo do evento').setRequired(true))
     .addStringOption(opt => opt.setName('descricao').setDescription('Descricao do evento').setRequired(true))
     .addStringOption(opt => opt.setName('data').setDescription('Data/horario do evento'))
-    .addStringOption(opt => opt.setName('ping').setDescription('Ping: @here, @everyone ou nome da role'))
+    .addStringOption(opt => opt
+      .setName('ping')
+      .setDescription('Mencionar alguém?')
+      .addChoices(
+        { name: '@here', value: '@here' },
+        { name: '@everyone', value: '@everyone' },
+      ))
+    .addRoleOption(opt => opt.setName('role').setDescription('Role especifica para mencionar'))
     .addStringOption(opt => opt.setName('imagem').setDescription('URL da imagem (opcional; buscada automaticamente para filme/serie/jogo)')),
 
   async execute(interaction) {
@@ -48,6 +55,7 @@ module.exports = {
     const descricao = interaction.options.getString('descricao');
     const data      = interaction.options.getString('data');
     const pingArg   = interaction.options.getString('ping');
+    const roleArg   = interaction.options.getRole('role');
     const imagemArg = interaction.options.getString('imagem');
 
     const cfg = TIPOS[tipo];
@@ -67,18 +75,7 @@ module.exports = {
     }
 
     // Resolve ping
-    let pingContent = null;
-    if (pingArg) {
-      if (pingArg.includes('@everyone')) {
-        pingContent = '@everyone';
-      } else if (pingArg.includes('@here')) {
-        pingContent = '@here';
-      } else {
-        // Tenta encontrar role pelo nome
-        const role = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === pingArg.toLowerCase());
-        pingContent = role ? role.toString() : null;
-      }
-    }
+    const pingContent = roleArg ? roleArg.toString() : (pingArg ?? '@here');
 
     const tituloFormatado = titulo.replace(/\b\w/g, c => c.toUpperCase());
 
@@ -99,6 +96,6 @@ module.exports = {
     if (imageUrl) embed.setImage(imageUrl);
 
     await interaction.channel.send({ content: pingContent, embeds: [embed] });
-    await interaction.editReply({ content: 'Evento criado!' });
+    await interaction.deleteReply();
   },
 };

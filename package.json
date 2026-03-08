@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "dev": "ENV_FILE=.env.test nodemon src/index.js",
+    "deploy": "node scripts/deploy-commands.js",
+    "deploy:test": "ENV_FILE=.env.test node scripts/deploy-commands.js",
+    "deploy:global": "node scripts/deploy-commands.js --global"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +18,8 @@
     "discord.js": "^14.25.1",
     "dotenv": "^17.3.1",
     "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

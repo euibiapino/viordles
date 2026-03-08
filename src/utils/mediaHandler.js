@@ -110,7 +110,8 @@ async function executeVotar(interaction, config) {
     return interaction.editReply({ embeds: [embed] });
   }
 
-  const list = result.rows.map((m, i) => `${NUMBER_EMOJIS[i]} ${m.title}`).join('\n');
+  const items = result.rows.slice(0, NUMBER_EMOJIS.length);
+  const list = items.map((m, i) => `${NUMBER_EMOJIS[i]} ${m.title}`).join('\n');
 
   const embed = new EmbedBuilder()
     .setTitle(`🗳️ Vote no(a) Proximo(a) ${config.label}!`)
@@ -119,9 +120,9 @@ async function executeVotar(interaction, config) {
     .setFooter({ text: 'Reaja com o numero da sua escolha' });
 
   const poll = await interaction.channel.send({ embeds: [embed] });
-  for (let i = 0; i < result.rows.length; i++) await poll.react(NUMBER_EMOJIS[i]);
+  for (let i = 0; i < items.length; i++) await poll.react(NUMBER_EMOJIS[i]);
 
-  await interaction.editReply({ content: 'Votacao criada!' });
+  await interaction.deleteReply();
 }
 
 async function executeSortear(interaction, config) {

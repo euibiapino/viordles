@@ -28,7 +28,8 @@ async function searchMedia(title, mediaType = 'movie') {
       overview: result.overview,
       year: releaseDate ? releaseDate.substring(0, 4) : null,
     };
-  } catch {
+  } catch (err) {
+    console.error('[TMDB] Erro ao buscar "%s":', title, err.message);
     return null;
   }
 }

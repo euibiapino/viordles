@@ -6,13 +6,9 @@ const fs = require('fs');
 const path = require('path');
 const { createTables } = require('./db/schema');
 
-const PREFIX = '!';
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessageReactions,
   ],
@@ -28,7 +24,9 @@ function loadCommands(dir) {
       loadCommands(fullPath);
     } else if (entry.name.endsWith('.js')) {
       const command = require(fullPath);
-      commands.set(command.name, command);
+      if (command.data && command.execute) {
+        commands.set(command.data.name, command);
+      }
     }
   }
 }
@@ -41,20 +39,22 @@ client.once('ready', async () => {
   console.log('Tabelas do banco criadas/verificadas.');
 });
 
-client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.content.startsWith(PREFIX)) return;
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
 
-  const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
-  const commandName = args.shift().toLowerCase();
-  const command = commands.get(commandName);
-
+  const command = commands.get(interaction.commandName);
   if (!command) return;
 
   try {
-    await command.execute(message, args, commands);
+    await command.execute(interaction);
   } catch (error) {
-    console.error(`Erro no comando ${commandName}:`, error);
-    message.reply('Ocorreu um erro ao executar esse comando.');
+    console.error(`Erro no comando ${interaction.commandName}:`, error);
+    const payload = { content: 'Ocorreu um erro ao executar esse comando.', ephemeral: true };
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply(payload).catch(() => {});
+    } else {
+      await interaction.reply(payload).catch(() => {});
+    }
   }
 });
 

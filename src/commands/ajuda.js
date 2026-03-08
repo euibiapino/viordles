@@ -50,25 +50,23 @@ const CATEGORIAS = {
   ]},
 };
 
+const builder = new SlashCommandBuilder()
+  .setName('ajuda')
+  .setDescription('Mostra os comandos disponiveis');
+
+Object.entries(CATEGORIAS).forEach(([key, cat]) => {
+  builder.addSubcommand(sub => sub
+    .setName(key)
+    .setDescription(`Comandos de ${cat.label}`)
+  );
+});
+
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('ajuda')
-    .setDescription('Mostra os comandos disponiveis')
-    .addStringOption(opt => opt
-      .setName('categoria')
-      .setDescription('Categoria dos comandos')
-      .addChoices(
-        { name: 'Filme', value: 'filme' },
-        { name: 'Serie', value: 'serie' },
-        { name: 'Anime', value: 'anime' },
-        { name: 'Animacao', value: 'animacao' },
-        { name: 'Jogo', value: 'jogo' },
-        { name: 'Geral', value: 'geral' },
-      )),
+  data: builder,
 
   async execute(interaction) {
-    const cat = interaction.options.getString('categoria');
-    const catInfo = cat ? CATEGORIAS[cat] : null;
+    const sub = interaction.options.getSubcommand(false);
+    const catInfo = sub ? CATEGORIAS[sub] : null;
 
     if (catInfo) {
       const embed = new EmbedBuilder()
@@ -76,19 +74,18 @@ module.exports = {
         .setColor(0x5865F2)
         .setDescription(catInfo.cmds.join('\n\n'))
         .setFooter({ text: '/ajuda para ver categorias' });
-
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
     const cats = Object.entries(CATEGORIAS)
-      .map(([key, c]) => `${c.emoji} **${c.label}** — \`/ajuda categoria:${key}\``)
+      .map(([key, c]) => `${c.emoji} **${c.label}** — \`/ajuda ${key}\``)
       .join('\n');
 
     const embed = new EmbedBuilder()
       .setTitle('Viordles — Categorias')
       .setColor(0x5865F2)
       .setDescription(cats)
-      .setFooter({ text: 'Use /ajuda categoria:<categoria> para ver os comandos' });
+      .setFooter({ text: 'Use /ajuda <categoria> para ver os comandos' });
 
     interaction.reply({ embeds: [embed], ephemeral: true });
   },

@@ -4,20 +4,37 @@ const { searchMedia } = require('./tmdb');
 
 const NUMBER_EMOJIS = ['1\u20E3','2\u20E3','3\u20E3','4\u20E3','5\u20E3','6\u20E3','7\u20E3','8\u20E3','9\u20E3','\uD83D\uDD1F'];
 
-async function findInList(query, mediaType) {
-  const exact = await pool.query(
+function searchDB(query, mediaType) {
+  return pool.query(
     'SELECT * FROM movies WHERE (LOWER(title) = LOWER($1) OR LOWER(original_title) = LOWER($1)) AND media_type = $2 LIMIT 1',
     [query, mediaType]
   );
-  if (exact.rows.length > 0) return { match: exact.rows[0], multiple: false };
+}
 
-  const partial = await pool.query(
+function searchDBPartial(query, mediaType) {
+  return pool.query(
     "SELECT * FROM movies WHERE (LOWER(title) LIKE '%' || LOWER($1) || '%' OR LOWER(original_title) LIKE '%' || LOWER($1) || '%') AND media_type = $2 ORDER BY created_at LIMIT 5",
     [query, mediaType]
   );
-  if (partial.rows.length === 0) return { match: null, multiple: false };
+}
+
+async function findInList(query, mediaType, tmdbType) {
+  const exact = await searchDB(query, mediaType);
+  if (exact.rows.length > 0) return { match: exact.rows[0], multiple: false };
+
+  const partial = await searchDBPartial(query, mediaType);
   if (partial.rows.length === 1) return { match: partial.rows[0], multiple: false };
-  return { match: null, multiple: true, options: partial.rows };
+  if (partial.rows.length > 1) return { match: null, multiple: true, options: partial.rows };
+
+  if (tmdbType) {
+    const tmdb = await searchMedia(query, tmdbType);
+    if (tmdb?.title && tmdb.title.toLowerCase() !== query.toLowerCase()) {
+      const retry = await searchDB(tmdb.title, mediaType);
+      if (retry.rows.length > 0) return { match: retry.rows[0], multiple: false };
+    }
+  }
+
+  return { match: null, multiple: false };
 }
 
 function multipleResultsEmbed(options) {
@@ -155,7 +172,7 @@ async function executeSortear(interaction, config) {
 async function executeAssistido(interaction, titulo, config) {
   await interaction.deferReply();
 
-  const { match, multiple, options } = await findInList(titulo, config.type);
+  const { match, multiple, options } = await findInList(titulo, config.type, config.tmdbType);
 
   if (multiple) return interaction.editReply({ embeds: [multipleResultsEmbed(options)] });
 
@@ -180,7 +197,7 @@ async function executeAssistido(interaction, titulo, config) {
 async function executeAvaliar(interaction, titulo, rating, config) {
   await interaction.deferReply();
 
-  const { match, multiple, options } = await findInList(titulo, config.type);
+  const { match, multiple, options } = await findInList(titulo, config.type, config.tmdbType);
 
   if (multiple) return interaction.editReply({ embeds: [multipleResultsEmbed(options)] });
 

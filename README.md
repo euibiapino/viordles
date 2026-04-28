@@ -1,6 +1,6 @@
 # Viordles
 
-Bot do Discord para servidor privado. Gerencie listas de filmes, séries, animes, animações e jogos com votações, avaliações e eventos.
+Bot do Discord para meu servidor privado. Gerencie listas de filmes, séries, animes, animações e jogos com votações, avaliações e eventos.
 
 ## Stack
 

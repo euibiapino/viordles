@@ -1,7 +1,6 @@
 node_modules/
-.env
-.env.test
 lavalink/
 Lavalink/
 Vocard-main/
-*.log
+.claude/
+*.md

@@ -18,8 +18,8 @@ if (!isGlobal && !GUILD_ID) {
 
 const commandsPath = path.join(__dirname, '..', 'src', 'commands');
 const allCommands = loadCommands(commandsPath);
-const filtered = isGlobal ? allCommands.filter(cmd => cmd.global) : allCommands;
-const commands = filtered.map(cmd => {
+const filtered = isGlobal ? allCommands.filter((cmd) => cmd.global) : allCommands;
+const commands = filtered.map((cmd) => {
   console.log(`Carregado: ${cmd.data.name}`);
   return cmd.data.toJSON();
 });
@@ -32,7 +32,9 @@ const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
       ? Routes.applicationCommands(CLIENT_ID)
       : Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID);
 
-    console.log(`\nRegistrando ${commands.length} slash command(s) ${isGlobal ? 'globalmente' : `no servidor ${GUILD_ID}`}...`);
+    console.log(
+      `\nRegistrando ${commands.length} slash command(s) ${isGlobal ? 'globalmente' : `no servidor ${GUILD_ID}`}...`,
+    );
 
     const data = await rest.put(route, { body: commands });
 

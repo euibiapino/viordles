@@ -2,19 +2,30 @@ const { EmbedBuilder } = require('discord.js');
 const pool = require('../db/pool');
 const { searchMedia } = require('./tmdb');
 
-const NUMBER_EMOJIS = ['1\u20E3','2\u20E3','3\u20E3','4\u20E3','5\u20E3','6\u20E3','7\u20E3','8\u20E3','9\u20E3','\uD83D\uDD1F'];
+const NUMBER_EMOJIS = [
+  '1\u20E3',
+  '2\u20E3',
+  '3\u20E3',
+  '4\u20E3',
+  '5\u20E3',
+  '6\u20E3',
+  '7\u20E3',
+  '8\u20E3',
+  '9\u20E3',
+  '\uD83D\uDD1F',
+];
 
 function searchDB(query, mediaType) {
   return pool.query(
     'SELECT * FROM movies WHERE (LOWER(title) = LOWER($1) OR LOWER(original_title) = LOWER($1)) AND media_type = $2 LIMIT 1',
-    [query, mediaType]
+    [query, mediaType],
   );
 }
 
 function searchDBPartial(query, mediaType) {
   return pool.query(
     "SELECT * FROM movies WHERE (LOWER(title) LIKE '%' || LOWER($1) || '%' OR LOWER(original_title) LIKE '%' || LOWER($1) || '%') AND media_type = $2 ORDER BY created_at LIMIT 5",
-    [query, mediaType]
+    [query, mediaType],
   );
 }
 
@@ -40,7 +51,7 @@ async function findInList(query, mediaType, tmdbType) {
 function multipleResultsEmbed(options) {
   const list = options.map((m, i) => `**${i + 1}.** ${m.title}`).join('\n');
   return new EmbedBuilder()
-    .setColor(0xFEE75C)
+    .setColor(0xfee75c)
     .setTitle('Varios resultados encontrados')
     .setDescription(`${list}\n\nSeja mais especifico!`);
 }
@@ -50,10 +61,12 @@ async function executeSugerir(interaction, titulo, config) {
 
   const existing = await pool.query(
     'SELECT id FROM movies WHERE LOWER(title) = LOWER($1) AND media_type = $2',
-    [titulo, config.type]
+    [titulo, config.type],
   );
   if (existing.rows.length > 0) {
-    const embed = new EmbedBuilder().setColor(0xED4245).setDescription(`**${titulo}** ja esta na lista!`);
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setDescription(`**${titulo}** ja esta na lista!`);
     return interaction.editReply({ embeds: [embed] });
   }
 
@@ -64,15 +77,15 @@ async function executeSugerir(interaction, titulo, config) {
 
   await pool.query(
     'INSERT INTO movies (title, original_title, suggested_by, poster_url, media_type) VALUES ($1, $2, $3, $4, $5)',
-    [displayTitle, originalTitle, interaction.user.username, posterUrl, config.type]
+    [displayTitle, originalTitle, interaction.user.username, posterUrl, config.type],
   );
 
   const embed = new EmbedBuilder()
     .setTitle(`${config.emoji} Adicionado a Lista!`)
-    .setColor(0x57F287)
+    .setColor(0x57f287)
     .addFields(
       { name: config.label, value: displayTitle, inline: true },
-      { name: 'Sugerido por', value: interaction.user.username, inline: true }
+      { name: 'Sugerido por', value: interaction.user.username, inline: true },
     )
     .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
     .setTimestamp();
@@ -89,11 +102,15 @@ async function executeListar(interaction, pagina, config) {
 
   const result = await pool.query(
     'SELECT title, suggested_by FROM movies WHERE watched = FALSE AND media_type = $1 ORDER BY created_at',
-    [config.type]
+    [config.type],
   );
 
   if (result.rows.length === 0) {
-    const embed = new EmbedBuilder().setColor(0xED4245).setDescription(`Nenhum(a) ${config.label} na lista! Use \`/${config.type} sugerir\` para adicionar.`);
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setDescription(
+        `Nenhum(a) ${config.label} na lista! Use \`/${config.type} sugerir\` para adicionar.`,
+      );
     return interaction.editReply({ embeds: [embed] });
   }
 
@@ -102,11 +119,13 @@ async function executeListar(interaction, pagina, config) {
   const page = Math.min(Math.max(pagina || 1, 1), totalPages);
   const slice = result.rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const list = slice.map((m, i) => `**${(page - 1) * PAGE_SIZE + i + 1}.** ${m.title} — *${m.suggested_by}*`).join('\n');
+  const list = slice
+    .map((m, i) => `**${(page - 1) * PAGE_SIZE + i + 1}.** ${m.title} — *${m.suggested_by}*`)
+    .join('\n');
 
   const embed = new EmbedBuilder()
     .setTitle(`${config.emoji} ${config.labelPlural} Pendentes`)
-    .setColor(0x5865F2)
+    .setColor(0x5865f2)
     .setDescription(list)
     .setFooter({ text: `Pagina ${page}/${totalPages} • ${result.rows.length} no total` })
     .setTimestamp();
@@ -115,15 +134,17 @@ async function executeListar(interaction, pagina, config) {
 }
 
 async function executeVotar(interaction, config) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: 64 });
 
   const result = await pool.query(
     'SELECT title FROM movies WHERE watched = FALSE AND media_type = $1 ORDER BY RANDOM() LIMIT 10',
-    [config.type]
+    [config.type],
   );
 
   if (result.rows.length === 0) {
-    const embed = new EmbedBuilder().setColor(0xED4245).setDescription(`Nenhum(a) ${config.label} na lista para votar!`);
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setDescription(`Nenhum(a) ${config.label} na lista para votar!`);
     return interaction.editReply({ embeds: [embed] });
   }
 
@@ -132,7 +153,7 @@ async function executeVotar(interaction, config) {
 
   const embed = new EmbedBuilder()
     .setTitle(`🗳️ Vote no(a) Proximo(a) ${config.label}!`)
-    .setColor(0xFEE75C)
+    .setColor(0xfee75c)
     .setDescription(list)
     .setFooter({ text: 'Reaja com o numero da sua escolha' });
 
@@ -147,21 +168,23 @@ async function executeSortear(interaction, config) {
 
   const result = await pool.query(
     'SELECT title, suggested_by, poster_url FROM movies WHERE watched = FALSE AND media_type = $1 ORDER BY RANDOM() LIMIT 1',
-    [config.type]
+    [config.type],
   );
 
   if (result.rows.length === 0) {
-    const embed = new EmbedBuilder().setColor(0xED4245).setDescription(`Nenhum(a) ${config.label} na lista para sortear!`);
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setDescription(`Nenhum(a) ${config.label} na lista para sortear!`);
     return interaction.editReply({ embeds: [embed] });
   }
 
   const item = result.rows[0];
   const embed = new EmbedBuilder()
     .setTitle(`🎲 ${config.label} Sorteado(a)!`)
-    .setColor(0x57F287)
+    .setColor(0x57f287)
     .addFields(
       { name: `${config.emoji} ${config.label}`, value: item.title, inline: true },
-      { name: '👤 Sugerido por', value: item.suggested_by, inline: true }
+      { name: '👤 Sugerido por', value: item.suggested_by, inline: true },
     )
     .setTimestamp();
 
@@ -177,15 +200,19 @@ async function executeAssistido(interaction, titulo, config) {
   if (multiple) return interaction.editReply({ embeds: [multipleResultsEmbed(options)] });
 
   if (!match || match.watched) {
-    const embed = new EmbedBuilder().setColor(0xED4245).setDescription(`Nao encontrei **${titulo}** na lista de pendentes.`);
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setDescription(`Nao encontrei **${titulo}** na lista de pendentes.`);
     return interaction.editReply({ embeds: [embed] });
   }
 
-  await pool.query('UPDATE movies SET watched = TRUE, watched_at = NOW() WHERE id = $1', [match.id]);
+  await pool.query('UPDATE movies SET watched = TRUE, watched_at = NOW() WHERE id = $1', [
+    match.id,
+  ]);
 
   const embed = new EmbedBuilder()
     .setTitle(`✅ ${config.label} Assistido(a)!`)
-    .setColor(0x57F287)
+    .setColor(0x57f287)
     .setDescription(`**${match.title}** marcado(a) como assistido(a)!`)
     .setFooter({ text: `Use /${config.type} avaliar para avaliar` })
     .setTimestamp();
@@ -202,19 +229,23 @@ async function executeAvaliar(interaction, titulo, rating, config) {
   if (multiple) return interaction.editReply({ embeds: [multipleResultsEmbed(options)] });
 
   if (!match) {
-    const embed = new EmbedBuilder().setColor(0xED4245).setDescription(`Nao encontrei **${titulo}** na lista.`);
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setDescription(`Nao encontrei **${titulo}** na lista.`);
     return interaction.editReply({ embeds: [embed] });
   }
 
   if (!match.watched) {
-    await pool.query('UPDATE movies SET watched = TRUE, watched_at = NOW() WHERE id = $1', [match.id]);
+    await pool.query('UPDATE movies SET watched = TRUE, watched_at = NOW() WHERE id = $1', [
+      match.id,
+    ]);
   }
 
   await pool.query(
     `INSERT INTO movie_ratings (movie_id, user_id, username, rating)
      VALUES ($1, $2, $3, $4)
      ON CONFLICT (movie_id, user_id) DO UPDATE SET rating = $4`,
-    [match.id, interaction.user.id, interaction.user.username, rating]
+    [match.id, interaction.user.id, interaction.user.username, rating],
   );
 
   const filled = Math.round(rating / 2);
@@ -222,11 +253,11 @@ async function executeAvaliar(interaction, titulo, rating, config) {
 
   const embed = new EmbedBuilder()
     .setTitle('⭐ Avaliacao Registrada!')
-    .setColor(0xFEE75C)
+    .setColor(0xfee75c)
     .addFields(
       { name: `${config.emoji} ${config.label}`, value: match.title, inline: true },
       { name: '👤 Por', value: interaction.user.username, inline: true },
-      { name: '🎯 Nota', value: `**${rating}/10** ${stars}`, inline: false }
+      { name: '🎯 Nota', value: `**${rating}/10** ${stars}`, inline: false },
     )
     .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
     .setTimestamp();
@@ -238,7 +269,8 @@ async function executeAvaliar(interaction, titulo, rating, config) {
 async function executeRanking(interaction, config) {
   await interaction.deferReply();
 
-  const result = await pool.query(`
+  const result = await pool.query(
+    `
     SELECT m.title, m.poster_url, ROUND(AVG(r.rating), 1) as media, COUNT(r.id) as votos
     FROM movies m
     JOIN movie_ratings r ON r.movie_id = m.id
@@ -246,21 +278,28 @@ async function executeRanking(interaction, config) {
     GROUP BY m.id, m.title, m.poster_url
     ORDER BY media DESC, votos DESC
     LIMIT 10
-  `, [config.type]);
+  `,
+    [config.type],
+  );
 
   if (result.rows.length === 0) {
-    const embed = new EmbedBuilder().setColor(0xED4245).setDescription(`Nenhum(a) ${config.label} avaliado(a) ainda!`);
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setDescription(`Nenhum(a) ${config.label} avaliado(a) ainda!`);
     return interaction.editReply({ embeds: [embed] });
   }
 
   const medals = ['🥇', '🥈', '🥉'];
   const list = result.rows
-    .map((m, i) => `${medals[i] || `**${i + 1}.**`} ${m.title} — ${m.media}/10 *(${m.votos} voto${m.votos > 1 ? 's' : ''})*`)
+    .map(
+      (m, i) =>
+        `${medals[i] || `**${i + 1}.**`} ${m.title} — ${m.media}/10 *(${m.votos} voto${m.votos > 1 ? 's' : ''})*`,
+    )
     .join('\n');
 
   const embed = new EmbedBuilder()
     .setTitle(`🏆 Ranking de ${config.labelPlural}`)
-    .setColor(0xFEE75C)
+    .setColor(0xfee75c)
     .setDescription(list)
     .setTimestamp();
 
@@ -268,4 +307,12 @@ async function executeRanking(interaction, config) {
   interaction.editReply({ embeds: [embed] });
 }
 
-module.exports = { executeSugerir, executeListar, executeVotar, executeSortear, executeAssistido, executeAvaliar, executeRanking };
+module.exports = {
+  executeSugerir,
+  executeListar,
+  executeVotar,
+  executeSortear,
+  executeAssistido,
+  executeAvaliar,
+  executeRanking,
+};

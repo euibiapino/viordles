@@ -12,9 +12,9 @@ const IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
 function parseCSV(content) {
   const lines = content.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
+  const headers = lines[0].split(',').map((h) => h.trim());
 
-  return lines.slice(1).map(line => {
+  return lines.slice(1).map((line) => {
     const values = [];
     let current = '';
     let inQuotes = false;
@@ -51,13 +51,14 @@ async function searchTMDB(title, year) {
 }
 
 async function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function importWatchlist(filePath, username) {
   const rows = parseCSV(fs.readFileSync(filePath, 'utf-8'));
   console.log(`\nImportando watchlist: ${rows.length} filmes pendentes...`);
-  let added = 0, skipped = 0;
+  let added = 0,
+    skipped = 0;
 
   for (let i = 0; i < rows.length; i++) {
     const { Name: title, Year: year } = rows[i];
@@ -65,11 +66,13 @@ async function importWatchlist(filePath, username) {
 
     const existing = await pool.query(
       'SELECT id FROM movies WHERE LOWER(title) = LOWER($1) AND media_type = $2',
-      [title, 'filme']
+      [title, 'filme'],
     );
 
     if (existing.rows.length > 0) {
-      process.stdout.write(`\r  [${i+1}/${rows.length}] Pulando duplicata: ${title.substring(0,40)}`);
+      process.stdout.write(
+        `\r  [${i + 1}/${rows.length}] Pulando duplicata: ${title.substring(0, 40)}`,
+      );
       skipped++;
       continue;
     }
@@ -77,10 +80,12 @@ async function importWatchlist(filePath, username) {
     const posterUrl = await searchTMDB(title, year);
     await pool.query(
       'INSERT INTO movies (title, suggested_by, poster_url, media_type, watched) VALUES ($1, $2, $3, $4, FALSE)',
-      [title, username, posterUrl, 'filme']
+      [title, username, posterUrl, 'filme'],
     );
 
-    process.stdout.write(`\r  [${i+1}/${rows.length}] ${title.substring(0,40).padEnd(40)} ${posterUrl ? '✓' : '-'}`);
+    process.stdout.write(
+      `\r  [${i + 1}/${rows.length}] ${title.substring(0, 40).padEnd(40)} ${posterUrl ? '✓' : '-'}`,
+    );
     added++;
     await delay(260);
   }
@@ -91,7 +96,8 @@ async function importWatchlist(filePath, username) {
 async function importRatings(filePath, username) {
   const rows = parseCSV(fs.readFileSync(filePath, 'utf-8'));
   console.log(`\nImportando ratings: ${rows.length} filmes assistidos...`);
-  let added = 0, updated = 0;
+  let added = 0,
+    updated = 0;
 
   for (let i = 0; i < rows.length; i++) {
     const { Name: title, Year: year, Rating: rawRating, Date: watchedAt } = rows[i];
@@ -101,24 +107,24 @@ async function importRatings(filePath, username) {
 
     const existing = await pool.query(
       'SELECT id, watched FROM movies WHERE LOWER(title) = LOWER($1) AND media_type = $2',
-      [title, 'filme']
+      [title, 'filme'],
     );
 
     let movieId;
 
     if (existing.rows.length > 0) {
       movieId = existing.rows[0].id;
-      await pool.query(
-        'UPDATE movies SET watched = TRUE, watched_at = $1 WHERE id = $2',
-        [watchedAt, movieId]
-      );
+      await pool.query('UPDATE movies SET watched = TRUE, watched_at = $1 WHERE id = $2', [
+        watchedAt,
+        movieId,
+      ]);
       updated++;
     } else {
       const posterUrl = await searchTMDB(title, year);
       await delay(260);
       const result = await pool.query(
         'INSERT INTO movies (title, suggested_by, poster_url, media_type, watched, watched_at) VALUES ($1, $2, $3, $4, TRUE, $5) RETURNING id',
-        [title, username, posterUrl, 'filme', watchedAt]
+        [title, username, posterUrl, 'filme', watchedAt],
       );
       movieId = result.rows[0].id;
       added++;
@@ -129,18 +135,20 @@ async function importRatings(filePath, username) {
         `INSERT INTO movie_ratings (movie_id, user_id, username, rating)
          VALUES ($1, $2, $3, $4)
          ON CONFLICT (movie_id, user_id) DO UPDATE SET rating = $4`,
-        [movieId, 'letterboxd_' + username, username, rating]
+        [movieId, 'letterboxd_' + username, username, rating],
       );
     }
 
-    process.stdout.write(`\r  [${i+1}/${rows.length}] ${title.substring(0,40).padEnd(40)} ${rating}/10`);
+    process.stdout.write(
+      `\r  [${i + 1}/${rows.length}] ${title.substring(0, 40).padEnd(40)} ${rating}/10`,
+    );
   }
 
   console.log(`\n  Novos: ${added} | Atualizados (watchlist→assistido): ${updated}`);
 }
 
 async function main() {
-  const [,, username = 'letterboxd', watchlistPath, ratingsPath] = process.argv;
+  const [, , username = 'letterboxd', watchlistPath, ratingsPath] = process.argv;
 
   if (!watchlistPath && !ratingsPath) {
     console.log('Uso: node scripts/import-letterboxd.js <seu_nome> <watchlist.csv> <ratings.csv>');
@@ -149,7 +157,8 @@ async function main() {
   }
 
   try {
-    if (watchlistPath && fs.existsSync(watchlistPath)) await importWatchlist(watchlistPath, username);
+    if (watchlistPath && fs.existsSync(watchlistPath))
+      await importWatchlist(watchlistPath, username);
     if (ratingsPath && fs.existsSync(ratingsPath)) await importRatings(ratingsPath, username);
     console.log('\nImportacao concluida!');
   } catch (err) {

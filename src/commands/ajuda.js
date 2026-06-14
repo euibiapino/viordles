@@ -2,16 +2,14 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
   global: true,
-  data: new SlashCommandBuilder()
-    .setName('ajuda')
-    .setDescription('Mostra os comandos disponíveis'),
+  data: new SlashCommandBuilder().setName('ajuda').setDescription('Mostra os comandos disponíveis'),
 
   async execute(interaction) {
     const bot = interaction.client.user;
 
     const embed = new EmbedBuilder()
       .setTitle('Viordles — Comandos')
-      .setColor(0x5865F2)
+      .setColor(0x5865f2)
       .setThumbnail(bot.displayAvatarURL())
       .addFields(
         {
@@ -34,6 +32,24 @@ module.exports = {
             '`/jogo placar` — Registra resultado de uma partida',
             '`/jogo ranking` — Ranking geral de vitórias',
             '`/jogo sorteio` — Sorteia um participante entre os mencionados',
+          ].join('\n'),
+        },
+        {
+          name: '🎵 Música',
+          value: [
+            '`/musica tocar` — Toca uma música, URL do YouTube ou Spotify',
+            '`/musica pular` — Pula a música atual',
+            '`/musica anterior` — Volta para a música anterior',
+            '`/musica pausar` · `/musica retomar` — Pausa/retoma',
+            '`/musica parar` — Para o player e limpa a fila',
+            '`/musica fila` — Mostra a fila de músicas',
+            '`/musica tocando` — Abre o painel do player',
+            '`/musica volume` — Ajusta o volume (0–200)',
+            '`/musica repetir` — Define repetição: desligado, música ou fila',
+            '`/musica shuffle` — Embaralha a fila',
+            '`/musica seek` · `/musica avancar` · `/musica retroceder` — Navega na faixa',
+            '`/musica letras` — Mostra a letra da música atual',
+            '`/musica efeito` — Aplica efeito de áudio (nightcore, bassboost…)',
           ].join('\n'),
         },
         {

@@ -24,6 +24,7 @@
     "lavalink-client": "^2.10.1",
     "lru-cache": "^11.5.1",
     "pg": "^8.20.0",
+    "socks-proxy-agent": "^10.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

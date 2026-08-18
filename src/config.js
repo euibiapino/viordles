@@ -13,6 +13,7 @@ const schema = z.object({
   LAVALINK_PASSWORD: z.string().min(8),
   YTDLP_PROXY: z.string().optional().default('socks5://localhost:40000'),
   HEALTH_PORT: z.coerce.number().int().positive().default(3000),
+  MUSIC_RELAY_PORT: z.coerce.number().int().positive().default(2444),
 });
 
 function load() {

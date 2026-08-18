@@ -8,6 +8,7 @@ const {
   parseTime,
 } = require('../utils/musicHandler');
 const { resolveOne, isYoutubePlaylist } = require('../utils/ytdlp');
+const { relayUrl } = require('../utils/streamRelay');
 const spotifyApi = require('../utils/spotify');
 
 function applyMeta(track, meta) {
@@ -46,7 +47,9 @@ function spotifyMatches(sp, ytTitle, ytAuthor) {
 }
 
 function splitArtistTrack(ytTitle) {
-  const noParens = String(ytTitle ?? '').replace(/[([][^)\]]*[)\]]/g, '').trim();
+  const noParens = String(ytTitle ?? '')
+    .replace(/[([][^)\]]*[)\]]/g, '')
+    .trim();
   const m = noParens.match(/^(.+?)\s*[-–—]\s*(.+)$/);
   if (!m) return null;
   return { artist: m[1].trim(), track: m[2].trim() };
@@ -93,8 +96,7 @@ function ok(text) {
 }
 
 async function getOrCreatePlayer(interaction) {
-  const member = interaction.guild.members.cache.get(interaction.user.id);
-  const voiceChannel = member?.voice?.channel;
+  const voiceChannel = interaction.member?.voice?.channel;
   if (!voiceChannel) return { error: 'Você precisa estar em um canal de voz!' };
 
   const manager = getManager();
@@ -127,8 +129,11 @@ function requirePlayer(interaction) {
 
 // ─── Subcommand handlers ─────────────────────────────────────────────────────
 
-async function loadHttpTrack(player, streamUrl, requester, meta) {
-  const res = await player.search({ query: streamUrl }, requester).catch(() => null);
+// O Lavalink não consegue ler a URL do googlevideo direto (ver streamRelay);
+// ele busca sempre o endereço do relay, e os metadados reais são reaplicados
+// por cima, já que o relay não carrega nenhum.
+async function loadRelayTrack(player, streamUrl, requester, meta) {
+  const res = await player.search({ query: relayUrl(streamUrl) }, requester).catch(() => null);
   if (!res || !res.tracks?.[0]) return null;
   const track = res.tracks[0];
   applyMeta(track, meta);
@@ -159,14 +164,14 @@ async function cmdTocar(interaction) {
   if (isSpotify) {
     const meta = await player.search({ query }, interaction.user).catch(() => null);
     if (!meta || meta.loadType === 'empty' || meta.loadType === 'error' || !meta.tracks?.[0]) {
-      return interaction.editReply({ embeds: [err(`Não achei essa música no Spotify.`)] });
+      return interaction.editReply({ embeds: [err('Não achei essa música no Spotify.')] });
     }
     const sp = meta.tracks[0];
     const resolved = await resolveOne(`${sp.info.author} ${sp.info.title}`).catch(() => null);
     if (!resolved)
       return interaction.editReply({ embeds: [err(`Não achei áudio para **${sp.info.title}**`)] });
 
-    const track = await loadHttpTrack(player, resolved.streamUrl, interaction.user, {
+    const track = await loadRelayTrack(player, resolved.streamUrl, interaction.user, {
       title: sp.info.title,
       author: sp.info.author,
       duration: sp.info.duration,
@@ -188,7 +193,7 @@ async function cmdTocar(interaction) {
 
   const [spotifyMeta, lavaSearch] = await Promise.all([
     enrichWithSpotify(resolved).catch(() => null),
-    player.search({ query: resolved.streamUrl }, interaction.user).catch(() => null),
+    player.search({ query: relayUrl(resolved.streamUrl) }, interaction.user).catch(() => null),
   ]);
   const meta = spotifyMeta ?? {
     title: resolved.title,

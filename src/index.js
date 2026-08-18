@@ -8,6 +8,7 @@ const { createTables } = require('./db/schema');
 const pool = require('./db/pool');
 const { loadCommands } = require('./utils/loadCommands');
 const { createManager, getManager } = require('./utils/lavalinkClient');
+const { startRelay, stopRelay } = require('./utils/streamRelay');
 const { setBotIcon } = require('./utils/musicHandler');
 const log = require('./utils/logger');
 
@@ -28,6 +29,7 @@ client.once('clientReady', async () => {
   log.info('Tabelas do banco verificadas.');
 
   setBotIcon(client.user.displayAvatarURL({ size: 64 }));
+  startRelay();
   const manager = createManager(client);
   await manager.init({ id: client.user.id, username: client.user.username });
   log.info('Lavalink conectado.');
@@ -85,6 +87,7 @@ async function shutdown(signal) {
 
   const tasks = [
     new Promise((r) => httpServer.close(() => r())),
+    stopRelay().catch(() => {}),
     Promise.resolve()
       .then(() => getManager()?.destroy?.())
       .catch(() => {}),

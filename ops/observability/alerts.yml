@@ -1,0 +1,22 @@
+groups:
+  - name: viordles
+    rules:
+      - alert: ViordlesOffline
+        expr: up{job="viordles"} == 0 or viordles_discord_ready == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: 'Bot indisponível há mais de 2 minutos'}
+      - alert: AudioFailures
+        expr: increase(viordles_playback_events_total{event=~"error|stuck"}[10m]) > 0
+        labels: {severity: warning}
+        annotations: {summary: 'Reprodução com erro ou travamento'}
+      - alert: SlowAudio
+        expr: histogram_quantile(0.95, sum by (le) (rate(viordles_stage_seconds_bucket{operation="relay_block"}[5m]))) > 5
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Leitura de áudio p95 acima de 5 segundos'}
+      - alert: LavalinkUnavailable
+        expr: viordles_lavalink_value{stat="up"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: 'Lavalink indisponível'}

@@ -39,6 +39,19 @@ async function createTables() {
       created_at TIMESTAMP DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS welcome_config (
+      guild_id TEXT PRIMARY KEY,
+      channel_id TEXT,
+      message TEXT,
+      images TEXT[] NOT NULL DEFAULT '{}',
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      new_account_days INTEGER NOT NULL DEFAULT 7,
+      goodbye_channel_id TEXT,
+      goodbye_message TEXT,
+      goodbye_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
     ALTER TABLE movies ADD COLUMN IF NOT EXISTS poster_url TEXT;
     ALTER TABLE movies ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT 'filme';
     ALTER TABLE movies ADD COLUMN IF NOT EXISTS original_title TEXT;

@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+scrape_configs:
+  - job_name: viordles
+    static_configs:
+      - targets: ['127.0.0.1:3000']
+    sample_limit: 2000
+    label_limit: 8
+    body_size_limit: 1MB
+  - job_name: alloy
+    static_configs:
+      - targets: ['127.0.0.1:12345']
+    sample_limit: 100
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'loki_process_dropped_lines_total|loki_write_dropped_entries_total|loki_write_sent_entries_total'
+        action: keep
+rule_files:
+  - /home/ubuntu/viordles-observability/config/alerts.yml

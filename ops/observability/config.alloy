@@ -1,0 +1,35 @@
+logging { level = "warn" }
+loki.source.file "pm2" {
+  targets = [
+    {__path__ = "/home/ubuntu/.pm2/logs/viordles-out.log", service = "viordles"},
+    {__path__ = "/home/ubuntu/.pm2/logs/viordles-error.log", service = "viordles"},
+    {__path__ = "/home/ubuntu/.pm2/logs/lavalink-out.log", service = "lavalink"},
+    {__path__ = "/home/ubuntu/.pm2/logs/lavalink-error.log", service = "lavalink"},
+  ]
+  tail_from_end = true
+  forward_to = [loki.process.safe.receiver]
+}
+loki.process "safe" {
+  stage.replace {
+    expression = `(?:https?|postgres(?:ql)?)://[^\s"']+`
+    replace = "[URL REDACTED]"
+  }
+  stage.replace {
+    expression = `(?i)(?:authorization|token|password|secret)[=: ]+[^\s,}]+`
+    replace = "[SECRET REDACTED]"
+  }
+  stage.drop {
+    longer_than = "8KB"
+    drop_counter_reason = "oversized"
+  }
+  // Global: at most ~22 GB/month before protocol overhead, even in a log storm.
+  stage.limit {
+    rate = 1
+    burst = 20
+    drop = true
+  }
+  forward_to = [loki.write.local.receiver]
+}
+loki.write "local" {
+  endpoint { url = "http://127.0.0.1:3100/loki/api/v1/push" }
+}

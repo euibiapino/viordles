@@ -56,6 +56,7 @@ module.exports = {
           name: '📣 Geral',
           value: [
             '`/evento` — Cria um aviso de evento *(admin)*',
+            '`/boasvindas` — Mensagens de boas-vindas e de saída *(admin)*',
             '`/enquete` — Cria uma enquete com opções personalizadas',
           ].join('\n'),
         },

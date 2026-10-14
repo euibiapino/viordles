@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { searchMedia } = require('../utils/tmdb');
 const { searchGame } = require('../utils/rawg');
 
@@ -15,6 +15,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('evento')
     .setDescription('Cria um aviso de evento (apenas admins)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption((opt) =>
       opt
         .setName('tipo')

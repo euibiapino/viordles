@@ -1,4 +1,5 @@
 const { LavalinkManager } = require('lavalink-client');
+const metrics = require('../observability/metrics');
 
 let manager = null;
 
@@ -36,7 +37,35 @@ function createManager(discordClient) {
 function setupEvents(discordClient) {
   const { updateController, clearController } = require('./musicHandler');
 
-  manager.on('trackStart', async (player) => {
+  const log = require('./logger');
+  manager.on('trackError', (player, track, payload) => {
+    metrics.playback.inc({ event: 'error' });
+    log.error('Falha de reprodução:', {
+      requestId: track?.userData?.requestId,
+      guild: player.guildId,
+      title: track?.info?.title,
+      position: player.position,
+      message: payload.exception?.message,
+    });
+  });
+  manager.on('trackStuck', (player, track) => {
+    metrics.playback.inc({ event: 'stuck' });
+    log.warn('Áudio travado:', {
+      requestId: track?.userData?.requestId,
+      guild: player.guildId,
+      title: track?.info?.title,
+      position: player.position,
+    });
+  });
+
+  manager.on('trackStart', async (player, track) => {
+    metrics.playback.inc({ event: 'start' });
+    const data = track?.userData;
+    if (data?.immediate && Number.isFinite(data.requestedAt)) {
+      metrics.startup.observe(Math.max(0, (Date.now() - data.requestedAt) / 1000));
+      data.immediate = false;
+    }
+    log.info('Reprodução iniciada', { requestId: data?.requestId });
     const channel = discordClient.channels.cache.get(player.textChannelId);
     if (channel) await updateController(player, channel);
   });

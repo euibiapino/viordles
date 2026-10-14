@@ -1,0 +1,11 @@
+/home/ubuntu/.pm2/logs/viordles-out.log /home/ubuntu/.pm2/logs/viordles-error.log /home/ubuntu/.pm2/logs/lavalink-out.log /home/ubuntu/.pm2/logs/lavalink-error.log {
+    su ubuntu ubuntu
+    daily
+    maxsize 20M
+    rotate 5
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

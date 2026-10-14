@@ -1,0 +1,339 @@
+{
+  "uid": "viordles-health",
+  "title": "Viordles — áudio e saúde",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Bot conectado",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "viordles_discord_ready",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Online",
+                  "color": "green"
+                },
+                "0": {
+                  "text": "Offline",
+                  "color": "red"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "title": "Reproduções com falha (1h)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(viordles_playback_events_total{event=~\"error|stuck\"}[1h])) or vector(0)",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "Tempo até trackStart p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(viordles_playback_start_seconds_bucket[15m])))",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "description": "Os dados aparecem conforme novas músicas são solicitadas e tocadas. Sem tráfego, o painel pode mostrar No data."
+    },
+    {
+      "id": 4,
+      "title": "Tempo por etapa p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (operation, le) (rate(viordles_stage_seconds_bucket[5m])))",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "description": "Os dados aparecem conforme novas músicas são solicitadas e tocadas. Sem tráfego, o painel pode mostrar No data."
+    },
+    {
+      "id": 5,
+      "title": "Cache hits por segundo",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (cache,result) (rate(viordles_cache_total[5m]))",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "description": "Os dados aparecem conforme novas músicas são solicitadas e tocadas. Sem tráfego, o painel pode mostrar No data."
+    },
+    {
+      "id": 6,
+      "title": "Relay: retries / redirects / falhas",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (event) (rate(viordles_relay_events_total[5m]))",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "description": "Os dados aparecem conforme novas músicas são solicitadas e tocadas. Sem tráfego, o painel pode mostrar No data."
+    },
+    {
+      "id": 7,
+      "title": "Frames: déficit e silêncio",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "viordles_lavalink_value{stat=~\"frames_deficit|frames_nulled\"}",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Memória do Node",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "viordles_process_resident_memory_bytes",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "Atraso do event loop p99",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "viordles_nodejs_eventloop_lag_p99_seconds",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Alertas ativos",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "viordles-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "ALERTS{alertstate=\"firing\"}",
+          "legendFormat": "{{operation}}{{cache}} {{result}}{{event}}{{stat}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "Logs do bot e Lavalink — filtre requestId no Explore",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "viordles-loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service=~\"viordles|lavalink\"}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

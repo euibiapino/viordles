@@ -1,0 +1,5 @@
+[Unit]
+Description=Rotate Viordles logs with bounded retention
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/logrotate /etc/logrotate.d/viordles

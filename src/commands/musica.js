@@ -2,13 +2,18 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getManager } = require('../utils/lavalinkClient');
 const {
   buildNowPlayingEmbed,
+  updateController,
   buildPlayerButtons,
   buildQueueEmbed,
   formatDuration,
   parseTime,
 } = require('../utils/musicHandler');
-const { resolveOne, isYoutubePlaylist } = require('../utils/ytdlp');
+const { resolveOne, resolveSpotifyAudio, isYoutubePlaylist } = require('../utils/ytdlp');
+const { matchesMusic, normalizeMusicQuery, audioErrorMessage } = require('../utils/musicLookup');
+const { relayUrl } = require('../utils/streamRelay');
 const spotifyApi = require('../utils/spotify');
+const log = require('../utils/logger');
+const metrics = require('../observability/metrics');
 
 function applyMeta(track, meta) {
   Object.assign(track.info, {
@@ -46,7 +51,9 @@ function spotifyMatches(sp, ytTitle, ytAuthor) {
 }
 
 function splitArtistTrack(ytTitle) {
-  const noParens = String(ytTitle ?? '').replace(/[([][^)\]]*[)\]]/g, '').trim();
+  const noParens = String(ytTitle ?? '')
+    .replace(/[([][^)\]]*[)\]]/g, '')
+    .trim();
   const m = noParens.match(/^(.+?)\s*[-–—]\s*(.+)$/);
   if (!m) return null;
   return { artist: m[1].trim(), track: m[2].trim() };
@@ -70,11 +77,18 @@ async function enrichWithSpotify(resolved) {
   if (cleanedAuthor && cleanedTitle) queries.push(`${cleanedAuthor} ${cleanedTitle}`);
 
   const seen = new Set();
-  for (const q of queries) {
+  for (const q of [...new Set(queries)].slice(0, 2)) {
     if (!q || seen.has(q)) continue;
     seen.add(q);
     const top = await spotifyApi.searchTrack(q).catch(() => null);
-    if (top && spotifyMatches(top, resolved.title, resolved.author)) {
+    if (
+      top &&
+      spotifyMatches(top, resolved.title, resolved.author) &&
+      matchesMusic(
+        { title: resolved.title, author: resolved.author, duration: resolved.duration },
+        top,
+      )
+    ) {
       return { ...top, duration: resolved.duration };
     }
   }
@@ -93,8 +107,7 @@ function ok(text) {
 }
 
 async function getOrCreatePlayer(interaction) {
-  const member = interaction.guild.members.cache.get(interaction.user.id);
-  const voiceChannel = member?.voice?.channel;
+  const voiceChannel = interaction.member?.voice?.channel;
   if (!voiceChannel) return { error: 'Você precisa estar em um canal de voz!' };
 
   const manager = getManager();
@@ -127,70 +140,151 @@ function requirePlayer(interaction) {
 
 // ─── Subcommand handlers ─────────────────────────────────────────────────────
 
-async function loadHttpTrack(player, streamUrl, requester, meta) {
-  const res = await player.search({ query: streamUrl }, requester).catch(() => null);
+// O Lavalink não consegue ler a URL do googlevideo direto (ver streamRelay);
+// ele busca sempre o endereço do relay, e os metadados reais são reaplicados
+// por cima, já que o relay não carrega nenhum.
+async function searchRelay(player, streamUrl, requester, query) {
+  const load = (url) =>
+    metrics
+      .measure('lavalink_load', () => player.search({ query: relayUrl(url) }, requester))
+      .catch(() => null);
+  let res = await load(streamUrl);
+  if (!res?.tracks?.[0]) {
+    // Uma URL em cache pode perder validade após mudança do IP de saída.
+    const fresh = await resolveOne(query, { refresh: true }).catch(() => null);
+    if (fresh) res = await load(fresh.streamUrl);
+  }
+  return res;
+}
+
+async function loadRelayTrack(player, streamUrl, requester, meta, query) {
+  const res = await searchRelay(player, streamUrl, requester, query);
   if (!res || !res.tracks?.[0]) return null;
   const track = res.tracks[0];
   applyMeta(track, meta);
+  track.info.artworkUrl = meta.artworkUrl ?? null;
   return track;
 }
 
 async function cmdTocar(interaction) {
-  const query = interaction.options.getString('query');
-  await interaction.deferReply();
+  const query = normalizeMusicQuery(interaction.options.getString('query'));
+  let lookupError;
+  const rememberError = (error) => {
+    lookupError = error;
+    return null;
+  };
+  const requestedAt = Date.now();
+  const started = performance.now();
+  const acknowledged = metrics
+    .measure('discord_ack', () => interaction.deferReply())
+    .then(
+      () => null,
+      (error) => error,
+    );
+  const replyError = async (message) => {
+    const ackError = await acknowledged;
+    if (ackError) throw ackError;
+    return interaction.editReply({ embeds: [err(message)] });
+  };
 
-  const { player, error } = await getOrCreatePlayer(interaction);
-  if (error) return interaction.editReply({ embeds: [err(error)] });
-
-  if (!player.playing && !player.paused && !player.queue.current) {
-    await player.setRepeatMode('off');
-  }
-
+  // Validar antes de iniciar trabalho paralelo ou entrar no canal.
+  const voice = interaction.member?.voice?.channel;
+  const manager = getManager();
+  if (!voice) return replyError('Você precisa estar em um canal de voz!');
+  if (!manager) return replyError('Player de música não está pronto ainda.');
+  const existing = manager.getPlayer(interaction.guildId);
+  if (existing && existing.voiceChannelId !== voice.id)
+    return replyError('Você precisa estar no mesmo canal de voz que o bot!');
   const isUrl = /^https?:\/\//.test(query);
   const isSpotify = /open\.spotify\.com\/(intl-[a-z]+\/)?(track|album|playlist)\//.test(query);
   const isPlaylist = isUrl && (isYoutubePlaylist(query) || /\/(album|playlist)\//.test(query));
+  if (isPlaylist)
+    return replyError('Playlists ainda não suportadas — me passe uma música individual.');
+  const resolving = !isSpotify ? resolveOne(query).catch(rememberError) : null;
+  const ackError = await acknowledged;
+  if (ackError) throw ackError;
+  const { player, error } = await metrics.measure('voice_connect', () =>
+    getOrCreatePlayer(interaction),
+  );
+  if (error) return interaction.editReply({ embeds: [err(error)] });
 
-  if (isPlaylist) {
-    return interaction.editReply({
-      embeds: [err('Playlists ainda não suportadas — me passe uma música individual.')],
-    });
+  if (!player.playing && !player.paused && !player.queue.current) {
+    await metrics.measure('player_setup', () => player.setRepeatMode('off'));
   }
 
   if (isSpotify) {
     const meta = await player.search({ query }, interaction.user).catch(() => null);
     if (!meta || meta.loadType === 'empty' || meta.loadType === 'error' || !meta.tracks?.[0]) {
-      return interaction.editReply({ embeds: [err(`Não achei essa música no Spotify.`)] });
+      return interaction.editReply({ embeds: [err('Não achei essa música no Spotify.')] });
     }
     const sp = meta.tracks[0];
-    const resolved = await resolveOne(`${sp.info.author} ${sp.info.title}`).catch(() => null);
-    if (!resolved)
-      return interaction.editReply({ embeds: [err(`Não achei áudio para **${sp.info.title}**`)] });
-
-    const track = await loadHttpTrack(player, resolved.streamUrl, interaction.user, {
+    const resolved = await resolveSpotifyAudio({
       title: sp.info.title,
       author: sp.info.author,
       duration: sp.info.duration,
-      uri: sp.info.uri,
-      artworkUrl: sp.info.artworkUrl ?? resolved.thumbnail,
-      sourceName: 'spotify',
-    });
+    }).catch(rememberError);
+    if (!resolved)
+      return interaction.editReply({
+        embeds: [
+          err(
+            audioErrorMessage(
+              lookupError,
+              `Não encontrei uma versão pública compatível com **${sp.info.title}**.`,
+            ),
+          ),
+        ],
+      });
+
+    const track = await loadRelayTrack(
+      player,
+      resolved.streamUrl,
+      interaction.user,
+      {
+        title: sp.info.title,
+        author: sp.info.author,
+        duration: resolved.duration,
+        uri: sp.info.uri,
+        artworkUrl: sp.info.artworkUrl ?? resolved.thumbnail ?? null,
+        sourceName: 'spotify',
+      },
+      `${sp.info.author} ${sp.info.title}`,
+    );
     if (!track)
       return interaction.editReply({ embeds: [err(`Falha ao carregar **${sp.info.title}**`)] });
 
+    track.userData = {
+      ...track.userData,
+      ...log.context(),
+      requestedAt,
+      immediate: !player.playing && !player.paused && !player.queue.current,
+    };
     await player.queue.add(track);
-    if (!player.playing && !player.paused) await player.play();
+    if (!player.playing && !player.paused)
+      await metrics.measure('player_start', () => player.play());
+    log.info('Música preparada:', {
+      guild: interaction.guildId,
+      elapsedMs: Math.round(performance.now() - started),
+    });
     return interaction.editReply({ embeds: [buildAddedEmbed(track, player)] });
   }
 
-  const resolved = await resolveOne(query).catch(() => null);
+  const resolved = await resolving;
   if (!resolved)
-    return interaction.editReply({ embeds: [err(`Nada encontrado para **${query}**`)] });
+    return interaction.editReply({
+      embeds: [
+        err(
+          audioErrorMessage(
+            lookupError,
+            `Não encontrei áudio para esse pedido. Tente o título e artista ou outra versão da faixa.`,
+          ),
+        ),
+      ],
+    });
 
-  const [spotifyMeta, lavaSearch] = await Promise.all([
-    enrichWithSpotify(resolved).catch(() => null),
-    player.search({ query: resolved.streamUrl }, interaction.user).catch(() => null),
-  ]);
-  const meta = spotifyMeta ?? {
+  // Consultar em paralelo ao carregamento; o áudio não espera pelo Spotify.
+  const spotifyMetadata = enrichWithSpotify(resolved).catch(() => null);
+  const lavaSearch = await searchRelay(player, resolved.streamUrl, interaction.user, query);
+  const meta = {
     title: resolved.title,
     author: resolved.author,
     duration: resolved.duration,
@@ -203,21 +297,52 @@ async function cmdTocar(interaction) {
   if (!track)
     return interaction.editReply({ embeds: [err(`Falha ao carregar **${meta.title}**`)] });
   applyMeta(track, meta);
+  track.info.artworkUrl = resolved.thumbnail ?? null;
 
+  track.userData = {
+    ...track.userData,
+    ...log.context(),
+    requestedAt,
+    immediate: !player.playing && !player.paused && !player.queue.current,
+  };
   await player.queue.add(track);
-  if (!player.playing && !player.paused) await player.play();
-  return interaction.editReply({ embeds: [buildAddedEmbed(track, player)] });
+  if (!player.playing && !player.paused) await metrics.measure('player_start', () => player.play());
+  log.info('Música preparada:', {
+    guild: interaction.guildId,
+    elapsedMs: Math.round(performance.now() - started),
+  });
+  const sp = await spotifyMetadata;
+  applyMeta(track, {
+    title: sp?.title ?? resolved.title,
+    author: sp?.author ?? resolved.author,
+    uri: sp?.uri ?? resolved.sourceUrl,
+  });
+  // Spotify é preferido; sem correspondência, preservar os dados da fonte real.
+  track.info.artworkUrl = sp?.artworkUrl ?? resolved.thumbnail ?? null;
+  const updates = [interaction.editReply({ embeds: [buildAddedEmbed(track, player)] })];
+  if (player.queue.current === track && interaction.channel)
+    updates.push(updateController(player, interaction.channel));
+  const results = await Promise.allSettled(updates);
+  for (const result of results) {
+    if (result.status === 'rejected')
+      log.warn('Falha ao atualizar metadados na mensagem:', result.reason);
+  }
 }
 
 function buildAddedEmbed(t, player) {
   const embed = new EmbedBuilder()
     .setColor(0x57f287)
-    .setTitle('✅ Adicionado à fila!')
+    .setTitle(player.queue.current === t ? '🎵 Música preparada!' : '✅ Adicionado à fila!')
     .setDescription(`[${t.info.title}](${t.info.uri})`)
     .addFields(
       { name: '🎙️ Artista', value: t.info.author || '—', inline: true },
       { name: '⏱️ Duração', value: formatDuration(t.info.duration), inline: true },
-      { name: '📋 Posição', value: `#${player.queue.tracks.length}`, inline: true },
+      {
+        name: '📋 Posição',
+        value:
+          player.queue.current === t ? 'No player' : `#${Math.max(1, player.queue.tracks.length)}`,
+        inline: true,
+      },
     );
   if (t.info.artworkUrl) embed.setThumbnail(t.info.artworkUrl);
   return embed;

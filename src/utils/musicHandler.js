@@ -133,38 +133,57 @@ function buildPlayerButtons(player) {
   return rows;
 }
 
-async function updateController(player, channel) {
-  const embed = buildNowPlayingEmbed(player);
-  const components = player.queue.current ? buildPlayerButtons(player) : [];
-
-  const existing = controllers.get(player.guildId);
-  if (existing) {
-    try {
-      await existing.edit({ embeds: [embed], components });
-      return;
-    } catch {
-      controllers.delete(player.guildId);
-    }
-  }
-
-  const msg = await channel.send({ embeds: [embed], components });
-  controllers.set(player.guildId, msg);
+// Eventos do player e metadados chegam em paralelo. Serializar por servidor
+// evita que dois envios criem cards, deixando um deles sem referência.
+const controllerUpdates = new Map();
+function serializeController(guildId, action) {
+  const previous = controllerUpdates.get(guildId) || Promise.resolve();
+  const task = previous.catch(() => {}).then(action);
+  controllerUpdates.set(guildId, task);
+  const cleanup = () => {
+    if (controllerUpdates.get(guildId) === task) controllerUpdates.delete(guildId);
+  };
+  task.then(cleanup, cleanup);
+  return task;
 }
 
-async function clearController(guildId) {
-  const msg = controllers.get(guildId);
-  if (msg) {
+function updateController(player, channel) {
+  return serializeController(player.guildId, async () => {
+    // Ler o estado na execução, não antes de esperar outra edição.
+    const embed = buildNowPlayingEmbed(player);
+    const components = player.queue.current ? buildPlayerButtons(player) : [];
+    const existing = controllers.get(player.guildId);
+    if (existing) {
+      try {
+        await existing.edit({ embeds: [embed], components });
+        return;
+      } catch (error) {
+        // Falha transitória não significa que a mensagem deixou de existir.
+        if (error.code !== 10008) throw error;
+        controllers.delete(player.guildId);
+      }
+    }
+    if (!player.queue.current) return;
+    const msg = await channel.send({ embeds: [embed], components });
+    controllers.set(player.guildId, msg);
+  });
+}
+
+function clearController(guildId) {
+  return serializeController(guildId, async () => {
+    const msg = controllers.get(guildId);
+    if (!msg) return;
+    const embed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle('Nada tocando agora')
+      .setDescription('Use `/musica tocar` para começar!');
     try {
-      const embed = new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setTitle('Nada tocando agora')
-        .setDescription('Use `/musica tocar` para começar!');
       await msg.edit({ embeds: [embed], components: [] });
-    } catch {
-      // mensagem ja deletada ou sem permissao
+    } catch (error) {
+      if (error.code !== 10008) throw error;
     }
     controllers.delete(guildId);
-  }
+  });
 }
 
 function buildQueueEmbed(player, page = 1) {

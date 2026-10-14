@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: Viordles
+    folder: Viordles
+    type: file
+    disableDeletion: true
+    editable: false
+    options:
+      path: /home/ubuntu/viordles-observability/config/dashboards

@@ -18,6 +18,7 @@ async function getToken() {
   const basic = Buffer.from(`${id}:${secret}`).toString('base64');
   const res = await fetch(SPOTIFY_TOKEN_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(2500),
     headers: {
       Authorization: `Basic ${basic}`,
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -37,7 +38,10 @@ async function searchTrack(query) {
 
   const token = await getToken();
   const url = `${SPOTIFY_SEARCH_URL}?q=${encodeURIComponent(query)}&type=track&limit=1`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(2500),
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok) return null;
   const data = await res.json();
   const t = data.tracks?.items?.[0];

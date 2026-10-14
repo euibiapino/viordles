@@ -1,0 +1,40 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { EventEmitter } = require('node:events');
+const { PassThrough } = require('node:stream');
+const childProcess = require('node:child_process');
+
+test('worker reutiliza processo, recusa concorrência e rejeita tarefa se processo cair', async (t) => {
+  let launches = 0;
+  let child;
+  t.mock.method(childProcess, 'spawn', () => {
+    launches++;
+    child = new EventEmitter();
+    child.stdout = new PassThrough();
+    child.stdin = new PassThrough();
+    child.kill = () => child.emit('exit', 1);
+    process.nextTick(() => child.stdout.write('{"ready":true}\n'));
+    return child;
+  });
+  delete require.cache[require.resolve('../src/utils/ytdlpWorker')];
+  const { ResolverWorker } = require('../src/utils/ytdlpWorker');
+  const worker = new ResolverWorker(__filename, '', 'bestaudio');
+  t.after(() => worker.stop());
+  await worker.start();
+  const first = worker.resolve('one');
+  await new Promise(setImmediate);
+  await assert.rejects(worker.resolve('two'), /busy/);
+  child.stdout.write('{"info":{"title":"one"}}\n');
+  assert.equal((await first).title, 'one');
+  const second = worker.resolve('two');
+  await new Promise(setImmediate);
+  child.stdout.write('{"info":{"title":"two"}}\n');
+  assert.equal((await second).title, 'two');
+  assert.equal(launches, 1);
+  const pending = worker.resolve('crash');
+  await new Promise(setImmediate);
+  const rejected = assert.rejects(pending, /unavailable/);
+  child.emit('exit', 1);
+  await rejected;
+  await assert.rejects(worker.start(), /cooling down/);
+});
